@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日复盘</title>
+<style>
+  /* 主题变量与 index.html 镜像（改配色时两处同步） */
+  :root {
+    --bg: #f7f2ec; --card: #ffffff; --card2: #fbf8f4;
+    --text: #33302b; --text2: #8a8378; --line: #eee7dd;
+    --study: #e07b39; --study-bg: #fdf1e7; --study-soft: #f5c9a8;
+    --break: #2f9e77; --break-bg: #e8f6f0;
+    --wait: #6b7b8c; --wait-bg: #eef2f5;
+    --danger: #c65d5d;
+    --shadow: 0 2px 12px rgba(120, 90, 50, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #201d1a; --card: #2a2622; --card2: #242220;
+      --text: #e8e2d8; --text2: #97907f; --line: #3a352f;
+      --study: #f0924d; --study-bg: #3a2c20; --study-soft: #6a4a2c;
+      --break: #4db98e; --break-bg: #1f3129;
+      --wait: #8a97a6; --wait-bg: #262b31;
+      --danger: #d98080;
+      --shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  /* 与 index.html 一致：隐藏滚动条但保留滚动 */
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  html, body { background: var(--bg); color: var(--text); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-size: 14px; min-height: 100vh;
+  }
+  .wrap {
+    max-width: 460px; margin: 0 auto; padding: 24px 22px 30px;
+    display: flex; flex-direction: column; gap: 16px;
+    animation: rise 0.45s ease-out;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  header { text-align: center; }
+  #dateLine { font-size: 12.5px; color: var(--text2); letter-spacing: 0.04em; }
+  #titleLine { font-size: 21px; font-weight: 700; margin-top: 4px; }
+
+  .recap {
+    background: var(--card); border-radius: 14px; box-shadow: var(--shadow);
+    padding: 12px 14px; display: flex; gap: 8px; align-items: stretch;
+  }
+  .recap .cell { flex: 1; text-align: center; min-width: 0; }
+  .recap .v { font-size: 15.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .recap .v .u { font-size: 11px; font-weight: 400; color: var(--text2); margin-left: 1px; }
+  .recap .k { font-size: 10.5px; color: var(--text2); margin-top: 2px; white-space: nowrap; }
+  .recap.none { display: block; text-align: center; color: var(--text2); font-size: 12.5px; padding: 14px; }
+
+  section.field { display: flex; flex-direction: column; gap: 7px; }
+  section.field > label { font-size: 13px; font-weight: 600; }
+  section.field > label .sub { font-weight: 400; color: var(--text2); font-size: 11.5px; margin-left: 6px; }
+
+  #headline {
+    border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+    padding: 9px 12px; font-size: 13.5px; font-family: inherit; color: var(--text);
+    outline: none; transition: border-color 0.15s;
+  }
+  #headline:focus { border-color: var(--study); }
+
+  #moodRow { display: flex; gap: 6px; }
+  .moodBtn {
+    flex: 1; border: 1px solid var(--line); background: var(--card); border-radius: 11px;
+    padding: 8px 2px 6px; cursor: pointer; font-size: 22px; line-height: 1.3;
+    transition: all 0.15s; filter: grayscale(0.55); opacity: 0.65; font-family: inherit;
+  }
+  .moodBtn .ml { display: block; font-size: 10px; color: var(--text2); }
+  .moodBtn:hover { filter: none; opacity: 0.9; transform: translateY(-1px); }
+  .moodBtn.on { filter: none; opacity: 1; border-color: var(--study); background: var(--study-bg); transform: translateY(-1px); }
+  .moodBtn.on .ml { color: var(--study); font-weight: 600; }
+
+  #starRow { display: flex; gap: 4px; align-items: center; }
+  .starBtn {
+    border: none; background: none; cursor: pointer; font-size: 24px; line-height: 1;
+    color: var(--text2); padding: 2px 4px; transition: transform 0.12s, color 0.12s; font-family: inherit;
+  }
+  .starBtn:hover { transform: scale(1.15); }
+  .starBtn.on { color: var(--study); }
+  #starHint { font-size: 11px; color: var(--text2); margin-left: 10px; }
+
+  #tagRow { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tagChip {
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    font-family: inherit; font-size: 12.5px; padding: 6px 13px; border-radius: 999px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tagChip:hover { border-color: var(--study); color: var(--study); }
+  .tagChip.on { background: var(--study); border-color: var(--study); color: #fff; font-weight: 600; }
+  .tagChip .x { font-size: 10px; margin-left: 4px; opacity: 0.75; }
+  .tagAdd { display: flex; gap: 6px; margin-top: 2px; }
+  .tagAdd input {
+    flex: 1; border: 1px solid var(--line); background: var(--card); border-radius: 9px;
+    padding: 7px 11px; font-size: 12.5px; font-family: inherit; color: var(--text); outline: none;
+  }
+  .tagAdd input:focus { border-color: var(--study); }
+  .tagAdd button {
+    border: 1px solid var(--line); background: var(--card); color: var(--text2);
+    font-family: inherit; font-size: 12.5px; padding: 7px 14px; border-radius: 9px; cursor: pointer;
+  }
+  .tagAdd button:hover { color: var(--study); border-color: var(--study); }
+
+  textarea {
+    border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+    padding: 9px 12px; font-size: 13.5px; font-family: inherit; color: var(--text);
+    outline: none; resize: vertical; min-height: 66px; line-height: 1.6; transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: var(--study); }
+
+  footer { display: flex; gap: 10px; margin-top: 4px; }
+  footer button {
+    flex: 1; font-family: inherit; font-size: 14px; font-weight: 600; padding: 11px 0;
+    border-radius: 12px; cursor: pointer; transition: all 0.15s;
+  }
+  #laterBtn { border: 1px solid var(--line); background: var(--card); color: var(--text2); }
+  #laterBtn:hover { color: var(--text); border-color: var(--text2); }
+  #saveBtn { border: none; background: var(--study); color: #fff; box-shadow: var(--shadow); }
+  #saveBtn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+  #saveBtn:disabled { opacity: 0.45; cursor: default; }
+
+  /* 保存成功遮罩 */
+  #savedMask {
+    position: fixed; inset: 0; z-index: 10; background: var(--bg);
+    display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+  }
+  #savedMask.show { display: flex; animation: rise 0.3s ease-out; }
+  #savedMask .big { font-size: 46px; animation: pop 0.4s ease-out; }
+  #savedMask .txt { font-size: 15px; font-weight: 600; color: var(--text2); }
+  @keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <header>
+    <div id="dateLine">—</div>
+    <h1 id="titleLine">✍ 今日复盘</h1>
+  </header>
+
+  <div class="recap" id="recapCard"></div>
+
+  <section class="field">
+    <label id="lbHeadline">一句话形容今天</label>
+    <input id="headline" type="text" maxlength="60" autocomplete="off">
+  </section>
+
+  <section class="field">
+    <label id="lbMood">今日心情</label>
+    <div id="moodRow"></div>
+  </section>
+
+  <section class="field">
+    <label id="lbRating">今日自评</label>
+    <div id="starRow"></div>
+  </section>
+
+  <section class="field">
+    <label><span id="lbTags">给今天贴个标签</span><span class="sub" id="tagSub"></span></label>
+    <div id="tagRow"></div>
+    <div class="tagAdd">
+      <input id="tagInput" maxlength="12">
+      <button id="tagAddBtn">＋</button>
+    </div>
+  </section>
+
+  <section class="field">
+    <label id="lbGood">今天做得好的</label>
+    <textarea id="good" rows="3"></textarea>
+  </section>
+
+  <section class="field">
+    <label id="lbImprove">可以改进的</label>
+    <textarea id="improve" rows="3"></textarea>
+  </section>
+
+  <section class="field">
+    <label id="lbPlan">明天想做的</label>
+    <textarea id="planT" rows="3"></textarea>
+  </section>
+
+  <footer>
+    <button id="laterBtn">稍后再说</button>
+    <button id="saveBtn" disabled>保存今日总结</button>
+  </footer>
+</div>
+
+<div id="savedMask">
+  <div class="big">✅</div>
+  <div class="txt" id="savedTxt">已保存</div>
+</div>
+
+<script>
+'use strict';
+
+/* ==================== 常量 ==================== */
+
+const STORE_KEY = 'studyTimer.v1';
+const MOODS = ['😤', '😕', '😐', '😊', '🤩'];
+const T = {
+  zh: {
+    titleNew: '✍ 今日复盘', titleEdit: '✍ 编辑这篇总结',
+    recapFocus: '专注', recapDone: '完成', recapSkip: '跳过',
+    recapNone: '这一天没有学习记录',
+    durH: (h, m) => h + '时' + m + '分', durM: (m) => m + '分',
+    block: (d, t2) => d + '/' + t2,
+    lbHeadline: '一句话形容今天', phHeadline: '今天像…',
+    lbMood: '今日心情', lbRating: '今日自评',
+    moodLabels: ['煎熬', '不佳', '平静', '不错', '超赞'],
+    lbTags: '给今天贴个标签', tagSub: '可多选，也可自定义', phTag: '自定义标签…', tagAdd: '＋',
+    lbGood: '今天做得好的', phGood: '哪些事推进顺利？哪些瞬间值得记住？',
+    lbImprove: '可以改进的', phImprove: '哪里分心了？下次遇到同样情况怎么应对？',
+    lbPlan: '明天想做的', phPlan: '给明天的自己留一句话或一个小目标…',
+    later: '稍后再说', saveNew: '保存今日总结', saveEdit: '保存修改',
+    saved: '已保存，明天见 👋',
+    weekend: ['日', '一', '二', '三', '四', '五', '六'],
+    presetTags: ['专注', '高效', '拖延', '疲惫', '熬夜', '运动', '阅读', '复盘']
+  },
+  en: {
+    titleNew: '✍ Daily Review', titleEdit: '✍ Edit this review',
+    recapFocus: 'Focus', recapDone: 'Blocks', recapSkip: 'Skipped',
+    recapNone: 'No study records this day',
+    durH: (h, m) => h + 'h ' + m + 'm', durM: (m) => m + 'm',
+    block: (d, t2) => d + '/' + t2,
+    lbHeadline: 'Describe today in one line', phHeadline: 'Today felt like…',
+    lbMood: 'Mood', lbRating: 'Rating',
+    moodLabels: ['Rough', 'Meh', 'Okay', 'Good', 'Great'],
+    lbTags: 'Tag the day', tagSub: 'multi-select, custom ok', phTag: 'Custom tag…', tagAdd: '＋',
+    lbGood: 'What went well', phGood: 'What moved forward? Any moments worth keeping?',
+    lbImprove: 'To improve', phImprove: 'Where did focus slip? How to handle it next time?',
+    lbPlan: 'For tomorrow', phPlan: 'Leave a note or a small goal for tomorrow…',
+    later: 'Not now', saveNew: 'Save review', saveEdit: 'Save changes',
+    saved: 'Saved — see you tomorrow 👋',
+    weekend: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+    presetTags: ['Focused', 'Productive', 'Procrastinated', 'Tired', 'Late night', 'Exercise', 'Reading', 'Review']
+  }
+};
+
+const bridge = window.studyTimer || null;
+
+/* ==================== 状态与工具 ==================== */
+
+// 只读取本页需要的字段，但保存时整对象写回，不丢其他数据
+function loadState() {
+  const base = { language: 'zh', journal: {}, summaryDismissed: {}, dailyStats: {} };
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) Object.assign(base, JSON.parse(raw));
+  } catch (e) { console.warn('读取状态失败', e); }
+  return base;
+}
+function saveState(s) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) { console.warn('保存失败', e); }
+  if (bridge && bridge.stateChanged) bridge.stateChanged();
+}
+
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function escText(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
+const params = new URLSearchParams(location.search);
+const qDate = params.get('date');
+const date = /^\d{4}-\d{2}-\d{2}$/.test(qDate || '') ? qDate : todayStr();
+
+let state = loadState();
+const lang = state.language === 'en' ? 'en' : 'zh';
+function tt(key) { const v = T[lang][key]; return v != null ? v : T.zh[key]; }
+
+/* ==================== 静态文案渲染 ==================== */
+
+function renderChrome() {
+  document.title = tt('titleNew').replace('✍ ', '');
+  const d = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)));
+  const now = new Date();
+  const zh = lang !== 'en';
+  const dayLabel = zh
+    ? (d.getMonth() + 1) + '月' + d.getDate() + '日 · 星期' + tt('weekend')[d.getDay()]
+    : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getDate() + ' · ' + tt('weekend')[d.getDay()];
+  const yr = d.getFullYear() !== now.getFullYear() ? d.getFullYear() + (zh ? '年' : ' ') : '';
+  $('#dateLine').textContent = yr + dayLabel;
+
+  $('#lbHeadline').textContent = tt('lbHeadline');
+  $('#headline').placeholder = tt('phHeadline');
+  $('#lbMood').textContent = tt('lbMood');
+  $('#lbRating').textContent = tt('lbRating');
+  $('#lbTags').textContent = tt('lbTags');
+  $('#tagSub').textContent = tt('tagSub');
+  $('#tagInput').placeholder = tt('phTag');
+  $('#tagAddBtn').textContent = tt('tagAdd');
+  $('#lbGood').textContent = tt('lbGood'); $('#good').placeholder = tt('phGood');
+  $('#lbImprove').textContent = tt('lbImprove'); $('#improve').placeholder = tt('phImprove');
+  $('#lbPlan').textContent = tt('lbPlan'); $('#planT').placeholder = tt('phPlan');
+  $('#laterBtn').textContent = tt('later');
+  $('#savedTxt').textContent = tt('saved');
+}
+
+function $(sel) { return document.querySelector(sel); }
+
+function renderRecap() {
+  const st = (state.dailyStats || {})[date];
+  const card = $('#recapCard');
+  if (!st) {
+    card.className = 'recap none';
+    card.textContent = tt('recapNone');
+    return;
+  }
+  const min = Math.round(st.focusMin || 0);
+  const h = Math.floor(min / 60), m = min % 60;
+  card.className = 'recap';
+  card.innerHTML =
+    '<div class="cell"><div class="v">' + (h > 0 ? tt('durH')(h, m) : tt('durM')(m)) + '</div><div class="k">' + tt('recapFocus') + '</div></div>'
+    + '<div class="cell"><div class="v">' + tt('block')(st.done || 0, st.total || 0) + '</div><div class="k">' + tt('recapDone') + '</div></div>'
+    + '<div class="cell"><div class="v">' + (st.skipped || 0) + '</div><div class="k">' + tt('recapSkip') + '</div></div>';
+}
+
+/* ==================== 表单交互 ==================== */
+
+let mood = -1;      // 0-4，-1 未选
+let rating = 0;     // 0-5，0 未评
+let customTags = []; // 自定义标签（预设标签单独记录选中态）
+
+function renderMoodRow() {
+  const row = $('#moodRow');
+  row.innerHTML = '';
+  MOODS.forEach((emoji, i) => {
+    const b = document.createElement('button');
+    b.className = 'moodBtn' + (mood === i ? ' on' : '');
+    b.innerHTML = emoji + '<span class="ml">' + tt('moodLabels')[i] + '</span>';
+    b.addEventListener('click', () => { mood = (mood === i ? -1 : i); renderMoodRow(); updateSaveBtn(); });
+    row.appendChild(b);
+  });
+}
+
+function renderStarRow() {
+  const row = $('#starRow');
+  row.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement('button');
+    b.className = 'starBtn' + (i <= rating ? ' on' : '');
+    b.textContent = i <= rating ? '★' : '☆';
+    b.addEventListener('click', () => { rating = (rating === i ? 0 : i); renderStarRow(); updateSaveBtn(); });
+    row.appendChild(b);
+  }
+  const hint = document.createElement('span');
+  hint.id = 'starHint';
+  hint.textContent = rating > 0 ? rating + '/5' : '';
+  row.appendChild(hint);
+}
+
+function selectedTags() {
+  const presets = tt('presetTags');
+  const sel = presets.filter((p) => presetOn.has(p));
+  return sel.concat(customTags);
+}
+const presetOn = new Set();
+
+function renderTagRow() {
+  const row = $('#tagRow');
+  row.innerHTML = '';
+  const presets = tt('presetTags');
+  presets.forEach((p) => {
+    const b = document.createElement('button');
+    b.className = 'tagChip' + (presetOn.has(p) ? ' on' : '');
+    b.textContent = p;
+    b.addEventListener('click', () => {
+      if (presetOn.has(p)) presetOn.delete(p); else presetOn.add(p);
+      renderTagRow(); updateSaveBtn();
+    });
+    row.appendChild(b);
+  });
+  customTags.forEach((c) => {
+    const b = document.createElement('button');
+    b.className = 'tagChip custom on';
+    b.title = lang === 'en' ? 'Click to remove' : '点击移除';
+    b.innerHTML = escText(c) + '<span class="x">✕</span>';
+    b.addEventListener('click', () => {
+      customTags = customTags.filter((x) => x !== c);
+      renderTagRow(); updateSaveBtn();
+    });
+    row.appendChild(b);
+  });
+}
+
+function addCustomTag() {
+  const input = $('#tagInput');
+  const v = input.value.trim();
+  if (!v) return;
+  const presets = tt('presetTags');
+  if (presets.includes(v)) { presetOn.add(v); }
+  else if (!customTags.includes(v)) customTags.push(v);
+  input.value = '';
+  renderTagRow(); updateSaveBtn();
+}
+$('#tagAddBtn').addEventListener('click', addCustomTag);
+$('#tagInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag(); } });
+
+function collect() {
+  return {
+    headline: $('#headline').value.trim(),
+    mood: mood,
+    rating: rating,
+    tags: selectedTags(),
+    good: $('#good').value.trim(),
+    improve: $('#improve').value.trim(),
+    plan: $('#planT').value.trim()
+  };
+}
+
+function updateSaveBtn() {
+  const c = collect();
+  const any = c.headline || c.mood >= 0 || c.rating > 0 || c.tags.length || c.good || c.improve || c.plan;
+  $('#saveBtn').disabled = !any;
+}
+
+['headline', 'good', 'improve', 'planT'].forEach((id) => {
+  $('#' + id).addEventListener('input', updateSaveBtn);
+});
+
+/* ==================== 保存 / 稍后 ==================== */
+
+let busy = false;
+
+$('#saveBtn').addEventListener('click', () => {
+  if (busy) return;
+  busy = true;
+  const c = collect();
+  // 保存前重读最新状态，只改写本日条目，避免覆盖其他窗口刚写入的数据
+  state = loadState();
+  if (!state.journal) state.journal = {};
+  if (!state.summaryDismissed) state.summaryDismissed = {};
+  const prev = state.journal[date];
+  state.journal[date] = {
+    headline: c.headline, mood: c.mood, rating: c.rating, tags: c.tags,
+    good: c.good, improve: c.improve, plan: c.plan,
+    savedAt: prev ? prev.savedAt : new Date().toISOString(),
+    editedAt: prev ? new Date().toISOString() : undefined
+  };
+  delete state.summaryDismissed[date]; // 保存即视为已记录，解除"稍后再说"
+  saveState(state);
+  $('#savedMask').classList.add('show');
+  setTimeout(() => { window.close(); }, 1200);
+});
+
+$('#laterBtn').addEventListener('click', () => {
+  if (busy) return;
+  busy = true;
+  // 仅对"今天"记录跳过：编辑历史日期时关闭不应影响今天的提醒
+  if (date === todayStr()) {
+    state = loadState();
+    if (!state.summaryDismissed) state.summaryDismissed = {};
+    state.summaryDismissed[date] = true;
+    saveState(state);
+  }
+  window.close();
+});
+
+/* ==================== 预填已有条目 ==================== */
+
+function prefill() {
+  const e = (state.journal || {})[date];
+  if (!e) return;
+  mood = typeof e.mood === 'number' && e.mood >= 0 && e.mood < MOODS.length ? e.mood : -1;
+  rating = typeof e.rating === 'number' ? Math.min(5, Math.max(0, e.rating)) : 0;
+  $('#headline').value = e.headline || '';
+  $('#good').value = e.good || '';
+  $('#improve').value = e.improve || '';
+  $('#planT').value = e.plan || '';
+  const presets = tt('presetTags');
+  (e.tags || []).forEach((tag) => {
+    if (presets.includes(tag)) presetOn.add(tag);
+    else if (tag && !customTags.includes(tag)) customTags.push(tag);
+  });
+  $('#titleLine').textContent = tt('titleEdit');
+  $('#saveBtn').textContent = tt('saveEdit');
+}
+
+/* 其他窗口改了共享状态 → 静默吸收（表单内容由用户输入主导，保存时会重读合并） */
+if (bridge && bridge.onStateSync) bridge.onStateSync(() => {});
+
+/* ==================== 启动 ==================== */
+
+renderChrome();
+renderRecap();
+prefill();
+renderMoodRow();
+renderStarRow();
+renderTagRow();
+updateSaveBtn();
+</script>
+</body>
+</html>

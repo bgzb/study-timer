@@ -1,0 +1,42 @@
+{
+  "name": "study-timer",
+  "version": "1.0.0",
+  "description": "学习作息计时 - 间歇学习节奏助手",
+  "main": "main.js",
+  "author": "yongzhao",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac --arm64"
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.yongzhao.study-timer",
+    "productName": "study-timer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "summary.html",
+      "main.js",
+      "preload.js",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "default",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ]
+    }
+  }
+}
