@@ -56,9 +56,11 @@ function createWindow() {
     try { win.webContents.setZoomFactor(1); } catch (e) {}
   });
 
-  const launchHidden = process.argv.includes('--hidden');
+  // 启动不再自动弹出主窗口：平时只驻留菜单栏（托盘倒计时 + 弹出面板），
+  // 提醒/铃声/托盘/统计仍由这个隐藏驻留的主窗口渲染进程负责；
+  // 仅首次运行展示一次，方便完成通知引导与作息设置
   win.once('ready-to-show', () => {
-    if (!launchHidden) win.show();
+    if (isFirstRun()) win.show();
   });
 
   win.on('close', (e) => {
@@ -76,6 +78,21 @@ function showWin() {
   } else {
     win.show();
     win.focus();
+  }
+}
+
+// 首次运行（userData 无标记文件）返回 true 并落标记，之后永远 false。
+// 与 registerNotificationsOnce 的 fs 标记模式一致；主进程读不到渲染端
+// localStorage，所以用 userData 文件判断"是否第一次启动"
+function isFirstRun() {
+  const fs = require('fs');
+  const flag = path.join(app.getPath('userData'), 'first-run-shown');
+  try {
+    if (fs.existsSync(flag)) return false;
+    fs.writeFileSync(flag, '1');
+    return true;
+  } catch (e) {
+    return false;
   }
 }
 
