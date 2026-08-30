@@ -58,6 +58,20 @@
   .recap .k { font-size: 10.5px; color: var(--text2); margin-top: 2px; white-space: nowrap; }
   .recap.none { display: block; text-align: center; color: var(--text2); font-size: 12.5px; padding: 14px; }
 
+  /* 跳过记录（入档的跳过原因，样式与 index.html 的 .skipRow 镜像） */
+  .skipCard {
+    background: var(--card); border-radius: 14px; box-shadow: var(--shadow);
+    padding: 12px 14px; display: flex; flex-direction: column; gap: 7px;
+  }
+  .skipCard .skipTitle { font-size: 12px; font-weight: 600; color: var(--text2); letter-spacing: 0.08em; }
+  .skipCard .skipTitle .n { font-weight: 700; margin-left: 4px; }
+  .skipRow { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .skipRow .skType { font-size: 10.5px; border-radius: 999px; padding: 1px 8px; flex-shrink: 0; }
+  .skipRow .skType.sty { color: var(--study); border: 1px solid var(--study); opacity: 0.85; }
+  .skipRow .skType.brk { color: var(--break); border: 1px solid var(--break); opacity: 0.85; }
+  .skipRow .t { font-family: "SF Mono", Menlo, monospace; font-size: 11.5px; color: var(--text2); white-space: nowrap; }
+  .skipRow .r { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; }
+
   section.field { display: flex; flex-direction: column; gap: 7px; }
   section.field > label { font-size: 13px; font-weight: 600; }
   section.field > label .sub { font-weight: 400; color: var(--text2); font-size: 11.5px; margin-left: 6px; }
@@ -149,6 +163,8 @@
 
   <div class="recap" id="recapCard"></div>
 
+  <div class="skipCard" id="skipCard"></div>
+
   <section class="field">
     <label id="lbHeadline">一句话形容今天</label>
     <input id="headline" type="text" maxlength="60" autocomplete="off">
@@ -211,6 +227,8 @@ const T = {
     titleNew: '✍ 今日复盘', titleEdit: '✍ 编辑这篇总结',
     recapFocus: '专注', recapDone: '完成', recapSkip: '跳过',
     recapNone: '这一天没有学习记录',
+    studyWord: '学习', breakWord: '休息',
+    skipLogTitle: '跳过记录', skipNoReason: '未填写原因', skipAtTime: (tm) => '跳过于 ' + tm,
     durH: (h, m) => h + '时' + m + '分', durM: (m) => m + '分',
     block: (d, t2) => d + '/' + t2,
     lbHeadline: '一句话形容今天', phHeadline: '今天像…',
@@ -229,6 +247,8 @@ const T = {
     titleNew: '✍ Daily Review', titleEdit: '✍ Edit this review',
     recapFocus: 'Focus', recapDone: 'Blocks', recapSkip: 'Skipped',
     recapNone: 'No study records this day',
+    studyWord: 'Study', breakWord: 'Break',
+    skipLogTitle: 'Skipped blocks', skipNoReason: 'No reason given', skipAtTime: (tm) => 'skipped at ' + tm,
     durH: (h, m) => h + 'h ' + m + 'm', durM: (m) => m + 'm',
     block: (d, t2) => d + '/' + t2,
     lbHeadline: 'Describe today in one line', phHeadline: 'Today felt like…',
@@ -250,20 +270,34 @@ const bridge = window.studyTimer || null;
 /* ==================== 状态与工具 ==================== */
 
 // 只读取本页需要的字段，但保存时整对象写回，不丢其他数据
+// Electron 下走主进程共享 JSON 文件（与两个 App 同步），浏览器模式回落 localStorage
 function loadState() {
   const base = { language: 'zh', journal: {}, summaryDismissed: {}, dailyStats: {} };
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) Object.assign(base, JSON.parse(raw));
+    let saved = null;
+    if (bridge && bridge.loadAllSync) {
+      saved = (bridge.loadAllSync() || {}).state || null;
+    } else {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) saved = JSON.parse(raw);
+    }
+    if (saved) Object.assign(base, saved);
   } catch (e) { console.warn('读取状态失败', e); }
   return base;
 }
 function saveState(s) {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) { console.warn('保存失败', e); }
-  if (bridge && bridge.stateChanged) bridge.stateChanged();
+  if (bridge && bridge.saveAll) {
+    bridge.saveAll({ state: s }); // 主进程合并时会保留 barTheme 等其余字段并广播同步
+  } else {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) { console.warn('保存失败', e); }
+  }
 }
 
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function fmtClock(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return pad2(h) + ':' + pad2(m);
+}
 function escText(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -327,6 +361,28 @@ function renderRecap() {
     '<div class="cell"><div class="v">' + (h > 0 ? tt('durH')(h, m) : tt('durM')(m)) + '</div><div class="k">' + tt('recapFocus') + '</div></div>'
     + '<div class="cell"><div class="v">' + tt('block')(st.done || 0, st.total || 0) + '</div><div class="k">' + tt('recapDone') + '</div></div>'
     + '<div class="cell"><div class="v">' + (st.skipped || 0) + '</div><div class="k">' + tt('recapSkip') + '</div></div>';
+}
+
+/* 跳过记录：读 skips 事件日志（含理由与块快照），当天没有跳过则整卡隐藏 */
+function renderSkipCard() {
+  const card = $('#skipCard');
+  const list = ((state.skips || {})[date] || []).filter((x) => x && x.key);
+  if (!list.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  let rows = '';
+  for (const x of list) {
+    const type = x.type
+      ? '<span class="skType ' + (x.type === 'break' ? 'brk' : 'sty') + '">' + tt(x.type === 'break' ? 'breakWord' : 'studyWord') + '</span>'
+      : '';
+    const range = x.start != null && x.end != null
+      ? fmtClock(x.start) + ' – ' + fmtClock(x.end)
+      : (x.at != null ? tt('skipAtTime')(fmtClock(x.at)) : '');
+    rows += '<div class="skipRow">' + type
+      + '<span class="t">' + range + '</span>'
+      + '<span class="r">' + (x.reason ? escText(x.reason) : tt('skipNoReason')) + '</span>'
+      + '</div>';
+  }
+  card.innerHTML = '<div class="skipTitle">' + tt('skipLogTitle') + '<span class="n">' + list.length + '</span></div>' + rows;
 }
 
 /* ==================== 表单交互 ==================== */
@@ -497,6 +553,7 @@ if (bridge && bridge.onStateSync) bridge.onStateSync(() => {});
 
 renderChrome();
 renderRecap();
+renderSkipCard();
 prefill();
 renderMoodRow();
 renderStarRow();

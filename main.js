@@ -1,34 +1,67 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, session, shell, screen, Notification } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, session, shell, screen, Notification, powerSaveBlocker } = require('electron');
 const { spawn } = require('child_process');
+const net = require('net');
+const fs = require('fs');
 const path = require('path');
+
+/* ==================== 运行模式 ====================
+ * 同一套代码打包为两个独立 App（仿 codeburn / codeburnmenu）：
+ * - study-timer.app       桌面端：打开即显示主窗口，关闭即退出；无托盘
+ * - study-timer-menu.app  菜单栏端：无 Dock 图标（LSUIElement），托盘 + 弹出面板，
+ *                         负责全部提醒（通知/铃声/统计/总结弹窗），开机自启指向它
+ * 开发模式：STUDY_TIMER_MENU=1 npm start 可直接跑菜单栏端 */
+const MENU_APP = process.env.STUDY_TIMER_MENU === '1' || /menu/i.test(app.getName());
+
+// dev 下两端共用一个 package name，userData 相同会导致单实例锁互撞，手动分开
+if (process.env.STUDY_TIMER_MENU === '1') {
+  app.setPath('userData', path.join(app.getPath('userData') + '-menu-dev'));
+}
+
+const DUTY_PORT = 47891;            // 菜单栏端在此端口挂牌，桌面端探测它决定是否接管提醒
+const DESKTOP_APP = '/Applications/study-timer.app';
 
 let win = null;
 let tray = null;
 let barWin = null;
 let summaryWin = null;
 let lastBarHideAt = 0;
+let menuAppAlive = false;           // 桌面端用：菜单栏端是否在运行（职责互斥，避免双份提醒）
+let menuNapBlocker = 0;             // 菜单栏端的防休眠 blocker id
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => showWin());
+  app.on('second-instance', () => { MENU_APP ? toggleBarWindow() : showWin(); });
 
   app.whenReady().then(() => {
+    if (MENU_APP && process.platform === 'darwin' && app.dock) {
+      try { app.dock.hide(); } catch (e) {} // LSUIElement 已隐藏 Dock，这里双保险
+    }
+    // 保险：菜单栏端负责全部提醒，必须阻止 App Nap 把进程挂起导致到点不触发
+    if (MENU_APP && !powerSaveBlocker.isStarted(menuNapBlocker)) {
+      menuNapBlocker = powerSaveBlocker.start('prevent-app-suspension');
+    }
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
       callback(['notifications', 'media', 'fullscreen'].includes(permission));
     });
     createWindow();
-    createTray();
+    watchSharedFile(); // 状态文件监听：跨 App / 跨窗口同步的接收端
+    if (MENU_APP) {
+      createTray();
+      startDutyServer();
+    } else {
+      startDutyProbe();
+    }
     registerNotificationsOnce();
   });
 
   app.on('window-all-closed', () => {
-    // macOS：关窗不退出，驻留菜单栏
+    // 桌面端：窗口全关 = 退出（提醒由菜单栏端负责，互不影响）
+    // 菜单栏端：owner 窗口常驻隐藏，不会走到这里
+    if (!MENU_APP) app.quit();
   });
-  app.on('activate', () => showWin());
-  // 关键：任何退出路径（Cmd+Q / Dock退出 / 托盘退出）都会先经过这里，
-  // 打开放行标志，否则窗口的 close 拦截会把退出整个吞掉
+  app.on('activate', () => { if (!MENU_APP) showWin(); }); // Dock 点击（仅桌面端有 Dock 图标）
   app.on('before-quit', () => { app.isQuitting = true; });
   app.on('will-quit', () => { if (tray) { tray.destroy(); tray = null; } });
 }
@@ -56,19 +89,19 @@ function createWindow() {
     try { win.webContents.setZoomFactor(1); } catch (e) {}
   });
 
-  // 启动不再自动弹出主窗口：平时只驻留菜单栏（托盘倒计时 + 弹出面板），
-  // 提醒/铃声/托盘/统计仍由这个隐藏驻留的主窗口渲染进程负责；
-  // 仅首次运行展示一次，方便完成通知引导与作息设置
   win.once('ready-to-show', () => {
-    if (isFirstRun()) win.show();
+    // 桌面端：打开就是为了窗口，直接显示
+    // 菜单栏端：这是隐藏驻留的 owner 窗口，负责提醒/统计，永不显示
+    if (!MENU_APP) win.show();
   });
 
-  win.on('close', (e) => {
-    if (!app.isQuitting) {
-      e.preventDefault();
-      win.hide();
-    }
-  });
+  if (MENU_APP) {
+    // 菜单栏端 owner 窗口：关窗只隐藏，保持提醒不断（真正退出走托盘菜单）
+    win.on('close', (e) => {
+      if (!app.isQuitting) { e.preventDefault(); win.hide(); }
+    });
+  }
+  // 桌面端不拦截 close：关窗即退出（window-all-closed → app.quit）
   win.on('closed', () => { win = null; });
 }
 
@@ -81,26 +114,112 @@ function showWin() {
   }
 }
 
-// 首次运行（userData 无标记文件）返回 true 并落标记，之后永远 false。
-// 与 registerNotificationsOnce 的 fs 标记模式一致；主进程读不到渲染端
-// localStorage，所以用 userData 文件判断"是否第一次启动"
-function isFirstRun() {
-  const fs = require('fs');
-  const flag = path.join(app.getPath('userData'), 'first-run-shown');
+/* ==================== 跨 App 共享状态 ====================
+ * 两个 App 进程的 localStorage 完全隔离（userData 不同），
+ * 状态统一存固定路径的 JSON 文件，双方 fs.watch 互相同步 */
+const SHARED_DIR = path.join(app.getPath('home'), 'Library', 'Application Support', 'study-timer-shared');
+const STATE_FILE = path.join(SHARED_DIR, 'state.json');
+let lastMtime = 0;
+let watchDebounce = null;
+
+function readShared() {
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) || {}; } catch (e) { return {}; }
+}
+
+function writeShared(obj, excludeWC) {
   try {
-    if (fs.existsSync(flag)) return false;
-    fs.writeFileSync(flag, '1');
-    return true;
-  } catch (e) {
-    return false;
+    fs.mkdirSync(SHARED_DIR, { recursive: true });
+    const tmp = STATE_FILE + '.tmp-' + process.pid;
+    fs.writeFileSync(tmp, JSON.stringify(obj));
+    fs.renameSync(tmp, STATE_FILE);
+    lastMtime = fs.statSync(STATE_FILE).mtimeMs;
+    broadcastStateSync(excludeWC);
+  } catch (e) { console.warn('[study-timer] shared state write failed:', e.message); }
+}
+
+// excludeWC：不回发给保存方自己。否则保存方（菜单栏端 owner 窗口每 60s 落盘统计）
+// 会收到自己的同步消息并触发 rebuild 抑制逻辑，把下一个到点提醒吃掉
+function broadcastStateSync(excludeWC) {
+  for (const w of BrowserWindow.getAllWindows()) {
+    if (!w.isDestroyed() && w.webContents !== excludeWC) w.webContents.send('state:sync');
   }
 }
 
-function setAutostart(v) {
-  app.setLoginItemSettings({ openAtLogin: !!v, openAsHidden: true });
+function checkFileChanged() {
+  try {
+    const m = fs.statSync(STATE_FILE).mtimeMs;
+    if (m !== lastMtime) {
+      lastMtime = m;
+      broadcastStateSync();
+    }
+  } catch (e) { /* 文件还不存在，忽略 */ }
 }
 
-/* ==================== 菜单栏弹出面板 ==================== */
+function watchSharedFile() {
+  try {
+    lastMtime = fs.statSync(STATE_FILE).mtimeMs;
+  } catch (e) {}
+  try {
+    fs.watch(SHARED_DIR, () => {
+      clearTimeout(watchDebounce);
+      watchDebounce = setTimeout(checkFileChanged, 120); // FSEvents 抖动去抖
+    });
+  } catch (e) { /* 目录不存在时靠轮询兜底 */ }
+  setInterval(checkFileChanged, 5000); // watch 丢事件的兜底轮询
+}
+
+// sendSync 通道：渲染进程启动时的同步读取
+ipcMain.on('state:load-sync', (e) => { e.returnValue = readShared(); });
+ipcMain.on('state:save', (_e, payload) => {
+  if (!payload || typeof payload !== 'object' || !payload.state) return;
+  const cur = readShared();
+  const next = Object.assign({}, cur); // 保留 barTheme / migratedLocal 等保存方未携带的字段
+  next.state = payload.state;
+  if (payload.barTheme != null) next.barTheme = payload.barTheme;
+  if (payload.migratedLocal != null) next.migratedLocal = payload.migratedLocal;
+  writeShared(next, _e.sender);
+});
+
+/* ==================== 提醒职责互斥 ====================
+ * 菜单栏端 = 常驻服务，恒为职责方；桌面端探测菜单栏端是否存活，
+ * 不在时临时接管提醒，避免"只开了桌面端却没有任何提醒" */
+function startDutyServer() {
+  const srv = net.createServer();
+  srv.on('error', (e) => console.warn('[study-timer] duty server error:', e.message));
+  srv.listen(DUTY_PORT, '127.0.0.1');
+}
+
+function startDutyProbe() {
+  const probe = () => {
+    const s = net.connect({ port: DUTY_PORT, host: '127.0.0.1' });
+    s.setTimeout(800);
+    const done = (alive) => { try { s.destroy(); } catch (e) {} if (alive !== menuAppAlive) {
+      menuAppAlive = alive;
+      for (const w of BrowserWindow.getAllWindows()) {
+        if (!w.isDestroyed()) w.webContents.send('duties:change', !alive);
+      }
+    } };
+    s.on('connect', () => done(true));
+    s.on('error', () => done(false));
+    s.on('timeout', () => done(false));
+  };
+  probe();
+  setInterval(probe, 30000);
+}
+
+ipcMain.on('duties:get-sync', (e) => { e.returnValue = MENU_APP ? true : !menuAppAlive; });
+
+/* ==================== 开机自启（统一指向菜单栏端） ==================== */
+
+function menuAppPath() { return '/Applications/study-timer-menu.app'; }
+
+function setAutostart(v) {
+  const opts = { openAtLogin: !!v, openAsHidden: true };
+  if (!MENU_APP && fs.existsSync(menuAppPath())) opts.path = menuAppPath(); // 桌面端里开关控制的是菜单栏端
+  app.setLoginItemSettings(opts);
+}
+
+/* ==================== 菜单栏弹出面板（仅菜单栏端） ==================== */
 
 const BAR_WIDTH = 400;
 const BAR_HEIGHT = 620;
@@ -190,11 +309,10 @@ function createTray(attempt) {
   console.log('[study-timer] tray created, iconEmpty=' + icon.isEmpty());
 
   const popupMenu = () => {
-    const visible = win && win.isVisible();
     const menu = Menu.buildFromTemplate([
       { label: '显示面板 Show Panel', click: () => toggleBarWindow() },
-      { label: visible ? '隐藏主窗口 Hide Window' : '显示主窗口 Show Window', click: () => { visible ? win.hide() : showWin(); } },
-      { label: '重启应用 Restart', click: () => { app.isQuitting = true; app.relaunch(); app.quit(); } },
+      { label: '打开桌面端 Open Desktop App', click: () => launchDesktopApp() },
+      { label: '重启 Restart', click: () => { app.isQuitting = true; app.relaunch(); app.quit(); } },
       { type: 'separator' },
       {
         label: '开机自启 Launch at Login',
@@ -224,6 +342,18 @@ function createTray(attempt) {
     }, 2500);
   }
 }
+
+// 启动桌面端 App；已在运行时 open 会聚焦它（second-instance → showWin）
+function launchDesktopApp() {
+  const p = fs.existsSync(DESKTOP_APP) ? DESKTOP_APP : path.join(__dirname, '..', 'study-timer.app');
+  if (fs.existsSync(p)) {
+    spawn('open', [p], { stdio: 'ignore' });
+  } else {
+    console.warn('[study-timer] desktop app not found:', p);
+  }
+}
+
+ipcMain.on('desktop:launch', () => launchDesktopApp());
 
 /* ==================== 每日总结窗口 ==================== */
 
@@ -278,7 +408,12 @@ ipcMain.on('tray:update', (_e, payload) => {
 });
 ipcMain.on('win:show', () => showWin());
 ipcMain.on('autostart:set', (_e, v) => setAutostart(v));
-ipcMain.handle('autostart:get', () => app.getLoginItemSettings().openAtLogin);
+ipcMain.handle('autostart:get', () => {
+  if (!MENU_APP && fs.existsSync(menuAppPath())) {
+    return app.getLoginItemSettings({ path: menuAppPath() }).openAtLogin;
+  }
+  return app.getLoginItemSettings().openAtLogin;
+});
 ipcMain.on('app:restart', () => {
   app.isQuitting = true;
   app.relaunch();
@@ -314,7 +449,8 @@ function showNotification(title, body, sound) {
       const opts = { title: String(title || ''), body: String(body || ''), silent: !sound };
       if (sound) opts.sound = String(sound);
       const n = new Notification(opts);
-      n.on('click', () => showWin());
+      // 桌面端：点通知开主窗口；菜单栏端：点通知弹面板（无 Dock 图标，不开窗口）
+      n.on('click', () => (MENU_APP ? toggleBarWindow() : showWin()));
       n.show();
       return;
     }
@@ -328,7 +464,6 @@ function showNotification(title, body, sound) {
 
 // 首次启动主动发一条注册通知：让应用出现在 系统设置→通知 列表里并触发授权弹窗（只做一次）
 function registerNotificationsOnce() {
-  const fs = require('fs');
   const flag = path.join(app.getPath('userData'), 'notif-registered');
   try {
     if (fs.existsSync(flag)) return;
@@ -337,7 +472,7 @@ function registerNotificationsOnce() {
   } catch (e) {}
 }
 
-/* 双窗口状态同步：任一渲染进程改了 localStorage，转发给其余窗口 */
+/* 双窗口状态同步（旧通道，兼容用）：状态现已走共享文件 + state:save 广播 */
 ipcMain.on('state:changed', (e) => {
   for (const w of BrowserWindow.getAllWindows()) {
     if (w.isDestroyed() || w.webContents === e.sender) continue;

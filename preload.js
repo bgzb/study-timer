@@ -10,9 +10,15 @@ contextBridge.exposeInMainWorld('studyTimer', {
   playSound: (file, volume) => ipcRenderer.send('sound:play', { file, volume }),
   openNotificationSettings: () => ipcRenderer.send('sysprefs:notifications'),
   notify: (title, body, sound) => ipcRenderer.send('notify', { title, body, sound }),
-  // 双窗口状态同步
-  stateChanged: () => ipcRenderer.send('state:changed'),
+  // 共享状态（两个 App 经主进程读写共享 JSON 文件，跨 App 同步）
+  loadAllSync: () => ipcRenderer.sendSync('state:load-sync'),
+  saveAll: (all) => ipcRenderer.send('state:save', all),
   onStateSync: (cb) => ipcRenderer.on('state:sync', () => cb()),
+  // 提醒职责：本窗口是否负责通知/铃声/统计（菜单栏端恒 true；桌面端在菜单栏端未运行时 true）
+  getDutiesSync: () => ipcRenderer.sendSync('duties:get-sync'),
+  onDutiesChange: (cb) => ipcRenderer.on('duties:change', (_e, v) => cb(v)),
+  // 菜单栏面板 → 启动桌面端 App
+  launchDesktop: () => ipcRenderer.send('desktop:launch'),
   // 菜单栏面板
   hideBar: () => ipcRenderer.send('bar:hide'),
   resizeBar: (w, h) => ipcRenderer.send('bar:resize', { w, h }),

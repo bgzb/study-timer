@@ -7,7 +7,10 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --mac --arm64"
+    "start:menu": "STUDY_TIMER_MENU=1 electron .",
+    "dist": "electron-builder --mac --arm64",
+    "dist:menu": "electron-builder --mac --arm64 --config builder-menu.json",
+    "dist:all": "npm run dist && npm run dist:menu"
   },
   "devDependencies": {
     "electron": "^44.0.0",

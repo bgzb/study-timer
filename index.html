@@ -548,6 +548,73 @@
     font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 16px; border-radius: 10px; cursor: pointer;
   }
 
+  /* ===== 跳过理由弹窗 ===== */
+  #skipReasonOverlay {
+    position: fixed; inset: 0; z-index: 96; background: rgba(30, 25, 20, 0.45);
+    backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center;
+    padding: 24px 16px;
+  }
+  #skipReasonOverlay.open { display: flex; }
+  #skipReasonPanel {
+    background: var(--card); border-radius: 20px; width: min(400px, 100%);
+    max-height: 100%; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  #skipReasonHead {
+    display: flex; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  #skipReasonHead h2 { font-size: 17px; }
+  #closeSkipReason {
+    margin-left: auto; border: none; background: var(--card2); color: var(--text2);
+    width: 30px; height: 30px; border-radius: 9px; cursor: pointer; font-size: 15px;
+  }
+  #skipReasonBody { padding: 14px 20px 18px; }
+  #skipReasonTarget {
+    font-size: 12px; color: var(--text2); background: var(--card2); border-radius: 9px;
+    padding: 7px 10px; font-variant-numeric: tabular-nums;
+  }
+  #skipQuick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  #skipQuick button {
+    border: 1px solid var(--line); background: var(--card2); color: var(--text2);
+    font-family: inherit; font-size: 12px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  #skipQuick button:hover { border-color: var(--danger); color: var(--danger); }
+  #skipReasonInput {
+    margin-top: 10px; width: 100%; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card2); color: var(--text); font-family: inherit; font-size: 13.5px;
+    line-height: 1.5; padding: 9px 11px; resize: none; outline: none; transition: border-color 0.15s;
+  }
+  #skipReasonInput:focus { border-color: var(--danger); }
+  #skipReasonActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  #skipCancel {
+    border: 1px solid var(--line); background: var(--card); color: var(--text2);
+    font-family: inherit; font-size: 13px; padding: 8px 16px; border-radius: 10px; cursor: pointer;
+  }
+  #skipCancel:hover { color: var(--text); border-color: var(--text2); }
+  #skipConfirm {
+    border: none; background: var(--danger); color: #fff; font-family: inherit;
+    font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 10px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  #skipConfirm:hover:not(:disabled) { filter: brightness(1.06); }
+  #skipConfirm:disabled { opacity: 0.4; cursor: default; }
+
+  /* 今日日志与手记详情中的跳过记录 */
+  .stLogItem.hasR { flex-direction: column; align-items: stretch; gap: 3px; }
+  .stLogItem .l1 { display: flex; align-items: center; gap: 10px; }
+  .stLogItem .r { font-size: 11.5px; color: var(--text2); white-space: pre-wrap; word-break: break-word; }
+  .skipRow {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+    background: var(--card2); border-radius: 10px; margin-bottom: 6px; font-size: 12.5px;
+  }
+  .skipRow .skType { font-size: 10.5px; border-radius: 999px; padding: 1px 8px; flex-shrink: 0; }
+  .skipRow .skType.sty { color: var(--study); border: 1px solid var(--study); opacity: 0.85; }
+  .skipRow .skType.brk { color: var(--break); border: 1px solid var(--break); opacity: 0.85; }
+  .skipRow .t { font-family: "SF Mono", Menlo, monospace; font-size: 11.5px; color: var(--text2); white-space: nowrap; }
+  .skipRow .r { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; }
+
   /* 紧凑适配（固定 400×620 窗口，见 main.js BAR_WIDTH/BAR_HEIGHT 与 JS 侧 BAR_W/BAR_H） */
   body.bar { overflow: hidden; }
   /* 高度固定后内容比窗口略矮：纵向撑满并均匀分布，底部按钮贴底不留空白 */
@@ -819,6 +886,30 @@
   </div>
 </div>
 
+<!-- 跳过理由 -->
+<div id="skipReasonOverlay">
+  <div id="skipReasonPanel">
+    <div id="skipReasonHead">
+      <h2 data-i18n="skipReasonTitle">跳过当前块</h2>
+      <button id="closeSkipReason">✕</button>
+    </div>
+    <div id="skipReasonBody">
+      <div id="skipReasonTarget">—</div>
+      <div id="skipQuick">
+        <button type="button" data-i18n="sq_tired">累了</button>
+        <button type="button" data-i18n="sq_busy">临时有事</button>
+        <button type="button" data-i18n="sq_off">状态不好</button>
+        <button type="button" data-i18n="sq_switch">换任务</button>
+      </div>
+      <textarea id="skipReasonInput" rows="3" maxlength="120" data-i18n-ph="skipReasonPh"></textarea>
+      <div id="skipReasonActions">
+        <button id="skipCancel" data-i18n="cancel">取消</button>
+        <button id="skipConfirm" data-i18n="skipConfirm" disabled>确认跳过</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -828,16 +919,26 @@ const STORE_KEY = 'studyTimer.v1';
 const HOLIDAY_TABLE_VERSION = 20261110;
 
 /* ==================== 运行模式 ==================== */
-/* ?mode=bar：菜单栏弹出面板（紧凑布局）。
- * 铃声/通知/托盘/统计等副作用只由主窗口触发，避免双份；
- * 主窗口启动时即创建、只是不显示（隐藏驻留），所以平时只见菜单栏
- * 面板时提醒也照常工作，bar 保持纯展示即可 */
+/* ?mode=bar：菜单栏端弹出面板（紧凑布局）。
+ * 提醒/统计等副作用由"职责窗口"触发（菜单栏端常驻负责；桌面端在菜单栏端
+ * 未运行时临时接管），bar 面板始终纯展示，避免双份 */
 const BAR_MODE = new URLSearchParams(location.search).get('mode') === 'bar';
 const BAR_THEME_KEY = 'studyTimer.barTheme';
+
+// 跨 App 共享状态：Electron 下走主进程的共享 JSON 文件（两个 App 经它同步），
+// 浏览器模式回落 localStorage
+function readAll() {
+  if (window.studyTimer && window.studyTimer.loadAllSync) {
+    try { return window.studyTimer.loadAllSync() || {}; } catch (e) { return {}; }
+  }
+  return null;
+}
+let barTheme = 'paper';
 if (BAR_MODE) {
   document.body.classList.add('bar');
-  let barTheme = null;
-  try { barTheme = localStorage.getItem(BAR_THEME_KEY); } catch (e) {}
+  const all0 = readAll();
+  if (all0) barTheme = all0.barTheme || 'paper';
+  else { try { barTheme = localStorage.getItem(BAR_THEME_KEY) || 'paper'; } catch (e) {} }
   if (barTheme === 'glass') document.body.classList.add('glass');
 }
 
@@ -1136,7 +1237,7 @@ const I18N = {
     dayDoneNotify: '🎉 今天全部完成',
     nextSession: (name, tm) => '下一时段：' + name + ' ' + tm,
     waitTip: (name, tm) => '等待 ' + name + ' · ' + tm + ' 开始',
-    openFull: '🖥 打开主窗口',
+    openFull: '🖥 打开桌面端',
     panelTheme: '切换面板主题（纸质 / 毛玻璃）',
     statsBtn: '📊 统计', statsTitle: '学习统计',
     stats_today: '今日', stats_week: '近7天', stats_month: '当月', stats_year: '今年',
@@ -1146,6 +1247,10 @@ const I18N = {
     statTotal: '总计专注', statAvg: '日均专注', statStudyDays: '学习天数',
     statBestDay: '最高单日', statBestMonth: '最高月份',
     skippedTag: '已跳过', todayLogTitle: '今日学习记录',
+    skipReasonTitle: '跳过当前块', skipReasonPh: '为什么跳过这个时间段？',
+    sq_tired: '累了', sq_busy: '临时有事', sq_off: '状态不好', sq_switch: '换任务',
+    cancel: '取消', skipConfirm: '确认跳过',
+    skipLogTitle: '跳过记录', skipNoReason: '未填写原因', skipAtTime: (tm) => '跳过于 ' + tm,
     statsEmpty: '还没有学习记录，开始今天的第一个专注块吧',
     durH: (h, m) => h + ' 小时 ' + m + ' 分钟', durM: (m) => m + ' 分钟',
     weekShorts: ['日', '一', '二', '三', '四', '五', '六'],
@@ -1228,7 +1333,7 @@ const I18N = {
     dayDoneNotify: '🎉 All done for today',
     nextSession: (name, tm) => 'Next session: ' + name + ' at ' + tm,
     waitTip: (name, tm) => 'Waiting: ' + name + ' starts at ' + tm,
-    openFull: '🖥 Open main window',
+    openFull: '🖥 Open Desktop App',
     panelTheme: 'Toggle panel theme (Paper / Glass)',
     statsBtn: '📊 Stats', statsTitle: 'Study Stats',
     stats_today: 'Today', stats_week: '7 Days', stats_month: 'Month', stats_year: 'Year',
@@ -1238,6 +1343,10 @@ const I18N = {
     statTotal: 'Total focus', statAvg: 'Daily avg', statStudyDays: 'Study days',
     statBestDay: 'Best day', statBestMonth: 'Best month',
     skippedTag: 'skipped', todayLogTitle: 'Today\u2019s study log',
+    skipReasonTitle: 'Skip current block', skipReasonPh: 'Why skip this block?',
+    sq_tired: 'Tired', sq_busy: 'Something came up', sq_off: 'Not focused', sq_switch: 'Switching tasks',
+    cancel: 'Cancel', skipConfirm: 'Confirm skip',
+    skipLogTitle: 'Skipped blocks', skipNoReason: 'No reason given', skipAtTime: (tm) => 'skipped at ' + tm,
     statsEmpty: 'No study records yet — start your first focus block today',
     durH: (h, m) => h + 'h ' + m + 'm', durM: (m) => m + 'm',
     weekShorts: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
@@ -1370,10 +1479,19 @@ function defaultState() {
 
 function loadState() {
   const s = defaultState();
+  let saved = null;
+  const all = readAll();
+  if (all) {
+    // Electron：从共享文件读（旧 localStorage 数据由启动时的迁移一次性搬入）
+    saved = all.state || null;
+  } else {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) saved = JSON.parse(raw);
+    } catch (e) {}
+  }
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) {
-      const saved = JSON.parse(raw);
+    if (saved) {
       // 迁移：旧版激励语结构（按类别平铺）→ 按语言分层
       if (saved.quotes && !saved.quotes.zh) saved.quotes = { zh: saved.quotes, en: JSON.parse(JSON.stringify(DEFAULT_QUOTES_EN)) };
       Object.assign(s, saved);
@@ -1390,10 +1508,15 @@ function loadState() {
 let state = loadState();
 
 function saveState() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-  catch (e) { console.warn('保存设置失败', e); }
-  // 双窗口同步：localStorage 两窗口共享，通知其余窗口重读并刷新视图
-  if (bridge && bridge.stateChanged) bridge.stateChanged();
+  if (bridge && bridge.saveAll) {
+    // 写共享 JSON 文件：主进程落盘并向本 App 各窗口 + 另一个 App 广播同步
+    bridge.saveAll({ state, barTheme });
+  } else {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      localStorage.setItem(BAR_THEME_KEY, barTheme);
+    } catch (e) { console.warn('保存设置失败', e); }
+  }
 }
 
 /* ==================== 计时引擎 ==================== */
@@ -1467,18 +1590,20 @@ function computeStats(day, nowAt) {
 }
 
 /* 每日轨迹快照：幂等重算"今天到目前为止"并覆盖写入（重启/崩溃不会重复计数）。
-   只在主窗口调用——菜单栏面板是纯展示，避免双写。 */
+   只在职责窗口调用——菜单栏端常驻负责，桌面端在其未运行时兜底，避免双写。 */
 function recordTodayStats(nowAt) {
-  if (BAR_MODE) return;
+  if (!dutiesOwner()) return;
   const now = nowAt != null ? nowAt : nowSeconds();
   const stats = computeStats(day, nowAt);
+  const skips = (state.skips && state.skips[today.str]) || [];
   const blocks = [];
   let skipped = 0;
   for (const b of day.blocks) {
     if (b.type !== 'study' || b.effEnd > now) continue;
     const sk = b.effEnd < b.end;
     if (sk) skipped++;
-    blocks.push({ s: b.start, e: b.effEnd, min: Math.round(((b.effEnd - b.start) / 60) * 10) / 10, sk: sk || undefined });
+    const sr = sk ? skips.find((x) => x.key === b.key) : null;
+    blocks.push({ s: b.start, e: b.effEnd, min: Math.round(((b.effEnd - b.start) / 60) * 10) / 10, sk: sk || undefined, r: (sr && sr.reason) || undefined });
   }
   if (!state.dailyStats) state.dailyStats = {};
   state.dailyStats[today.str] = { focusMin: stats.focusMin, done: stats.done, total: stats.total, skipped, blocks };
@@ -1591,7 +1716,7 @@ function blockRangeText(b) {
 }
 
 function fireTransition(st) {
-  if (BAR_MODE) return; // 铃声/通知只由主窗口发，面板是纯展示
+  if (!dutiesOwner()) return; // 铃声/通知只由职责窗口发（菜单栏端优先，桌面端兜底），面板是纯展示
   // 提示音随横幅由系统播放；无横幅场景（通知关闭/浏览器模式）才本地播放
   const bannerWillSound = !!(bridge && state.notifications);
   if (!bannerWillSound) playSound();
@@ -1615,8 +1740,14 @@ function fireTransition(st) {
 const bridge = window.studyTimer || null;
 let lastTrayTitle = null;
 
+// 提醒职责：菜单栏端 owner 窗口恒 true；桌面端窗口平时 false，
+// 主进程探测到菜单栏端未运行时置 true（临时接管，提醒不断档）；浏览器模式恒 true
+let duties = bridge ? !!bridge.getDutiesSync() : true;
+if (bridge && bridge.onDutiesChange) bridge.onDutiesChange((v) => { duties = v; tick(); });
+function dutiesOwner() { return !BAR_MODE && duties; }
+
 function updateTray(st) {
-  if (!bridge || BAR_MODE) return;
+  if (!bridge || !dutiesOwner()) return;
   let title = '--:--', tip = t('appName');
   if (st.phase === 'study' || st.phase === 'break') {
     title = fmtCountdown(st.block.effEnd - nowSeconds());
@@ -1641,7 +1772,7 @@ let summaryAutoOpenedFor = null; // 本次运行内已自动弹过的日期，�
 // 全天结束（最后一块正常走完 / 跳过提前结束 / 打开应用时当天已结束）时自动弹出总结窗口。
 // 柔和策略：showInactive 不抢焦点；已保存或点过"稍后再说"的日期不再弹；重启后当天未填会再次提醒。
 function maybeAutoOpenSummary(st) {
-  if (BAR_MODE || !bridge || !bridge.openSummary) return; // 面板纯展示；浏览器模式无桥
+  if (!dutiesOwner() || !bridge || !bridge.openSummary) return; // 面板纯展示；浏览器模式无桥
   if (!st || st.phase !== 'done') return;
   const key = today.str;
   if ((state.journal && state.journal[key]) || (state.summaryDismissed && state.summaryDismissed[key])) return;
@@ -1671,7 +1802,7 @@ function closeSettingsPanel() {
 function applyStateSync() {
   state = loadState();
   applyI18n();
-  rebuildDay(true);
+  rebuildDay();
   tick();
   setQuote(currentState(day));
   if (settingsOverlay.classList.contains('open')) openSettings();
@@ -1683,7 +1814,8 @@ if (bridge && bridge.onStateSync) bridge.onStateSync(() => applyStateSync());
 function applyBarTheme(theme) {
   const glass = theme === 'glass';
   document.body.classList.toggle('glass', glass);
-  try { localStorage.setItem(BAR_THEME_KEY, glass ? 'glass' : 'paper'); } catch (e) {}
+  barTheme = glass ? 'glass' : 'paper';
+  if (bridge && bridge.saveAll) bridge.saveAll({ state, barTheme });
   if (bridge && bridge.setBarVibrancy) bridge.setBarVibrancy(glass);
 }
 
@@ -1707,14 +1839,15 @@ if (BAR_MODE) {
   const openFullBtn = document.createElement('button');
   openFullBtn.setAttribute('data-i18n', 'openFull');
   openFullBtn.addEventListener('click', () => {
-    if (bridge) { bridge.showWindow(); bridge.hideBar(); }
+    if (bridge) { bridge.launchDesktop(); bridge.hideBar(); }
   });
   barFooter.appendChild(openFullBtn);
   $('#app').appendChild(barFooter);
 
-  // Escape：先收统计/设置弹层，再收面板
+  // Escape：先收跳过理由/统计/设置弹层，再收面板
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (skipReasonOverlay.classList.contains('open')) { closeSkipReason(); return; }
     if (statsOverlay.classList.contains('open')) { closeStatsPanel(); return; }
     if (settingsOverlay.classList.contains('open')) { closeSettingsPanel(); return; }
     if (modePopover.style.display === 'block') { modePopover.style.display = 'none'; return; }
@@ -1725,18 +1858,17 @@ if (BAR_MODE) {
 /* ==================== 主渲染循环 ==================== */
 
 let today = null, modeInfo = null, day = null;
-let lastStateKey = null, initSuppress = true, lastStatsWrite = 0;
+let lastStateKey = null, lastStatsWrite = 0;
 let currentQuote = '';
 let currentFillEl = null;
 
-function rebuildDay(suppress) {
+// 注意：这里绝不能压制/预置 lastStateKey —— owner 窗口每 60s 落盘一次统计，
+// 若每次同步都重置"抑制一次"，到点的相位切换通知会被吃掉。
+// 唯一豁免是页面首次加载（lastStateKey === null），见 tick()。
+function rebuildDay() {
   today = getToday();
   modeInfo = detectMode(today);
   day = expandDay(state.schedules[modeInfo.mode] || [], state.skips[today.str] || []);
-  if (suppress) {
-    initSuppress = true;
-    lastStateKey = stateKeyOf(currentState(day));
-  }
   renderHeader();
   renderTimeline();
 }
@@ -1878,13 +2010,14 @@ function tick() {
     // 跨天：以 23:59:59 结算昨天的最终轨迹。此刻真实时钟已进入新的一天，
     // 若直接用 nowSeconds() 重算"昨天到现在"会得到全零，覆盖掉昨天的记录
     recordTodayStats(86399);
-    rebuildDay(true);
+    rebuildDay();
   }
   const st = currentState(day);
   const key = stateKeyOf(st);
   if (key !== lastStateKey) {
-    if (!initSuppress) fireTransition(st);
-    else initSuppress = false;
+    // lastStateKey === null 仅出现在页面首次加载：只建立基准、不补发通知
+    // （中途打开应用不回放已过去的提醒）；此后任何相位变化都必须触发通知
+    if (lastStateKey !== null) fireTransition(st);
     lastStateKey = key;
     setQuote(st);
     recordTodayStats();
@@ -1912,18 +2045,77 @@ $('#requoteBtn').addEventListener('click', () => {
   setQuote(currentState(day));
 });
 
+/* 跳过当前块：先填写理由再生效，理由随跳过记录一起入档当日总结 */
+const skipReasonOverlay = $('#skipReasonOverlay');
+
+function updateSkipConfirm() {
+  $('#skipConfirm').disabled = !$('#skipReasonInput').value.trim();
+}
+function openSkipReason(st) {
+  $('#skipReasonTarget').textContent =
+    (st.block.type === 'study' ? t('studyWord') : t('breakWord'))
+    + ' · ' + fmtClock(st.block.start) + ' – ' + fmtClock(st.block.end);
+  const input = $('#skipReasonInput');
+  input.value = '';
+  updateSkipConfirm();
+  skipReasonOverlay.classList.add('open');
+  scheduleBarResize();
+  setTimeout(() => input.focus(), 50);
+}
+function closeSkipReason() {
+  skipReasonOverlay.classList.remove('open');
+  scheduleBarResize();
+}
+
 $('#skipBtn').addEventListener('click', () => {
   const st = currentState(day);
   if (st.phase !== 'study' && st.phase !== 'break') return;
+  openSkipReason(st);
+});
+$('#closeSkipReason').addEventListener('click', closeSkipReason);
+$('#skipCancel').addEventListener('click', closeSkipReason);
+skipReasonOverlay.addEventListener('click', (e) => { if (e.target === skipReasonOverlay) closeSkipReason(); });
+$('#skipQuick').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const input = $('#skipReasonInput');
+  input.value = btn.textContent;
+  updateSkipConfirm();
+  input.focus();
+});
+$('#skipReasonInput').addEventListener('input', updateSkipConfirm);
+$('#skipReasonInput').addEventListener('keydown', (e) => {
+  // Enter 确认（Shift+Enter 换行），与总结窗口的表单手感一致
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!$('#skipConfirm').disabled) $('#skipConfirm').click();
+  }
+});
+$('#skipConfirm').addEventListener('click', () => {
+  const reason = $('#skipReasonInput').value.trim();
+  if (!reason) return;
+  // 弹窗开着时块可能已自然结束或被其它窗口跳过，确认前重新校验
+  const st = currentState(day);
+  if (st.phase !== 'study' && st.phase !== 'break') { closeSkipReason(); return; }
   if (!state.skips[today.str]) state.skips[today.str] = [];
   if (!state.skips[today.str].find((x) => x.key === st.block.key)) {
-    state.skips[today.str].push({ key: st.block.key, at: nowSeconds() });
+    // type/start/end 为该块快照：日后修改作息也不影响总结里的跳过记录
+    state.skips[today.str].push({
+      key: st.block.key, at: nowSeconds(), reason,
+      type: st.block.type, start: st.block.start, end: st.block.end,
+    });
     saveState();
-    rebuildDay(false);
+    rebuildDay();
     recordTodayStats();
     tick();
   }
+  closeSkipReason();
 });
+if (!BAR_MODE) {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && skipReasonOverlay.classList.contains('open')) closeSkipReason();
+  });
+}
 
 /* 模式覆盖弹层 */
 const modeBadge = $('#modeBadge');
@@ -1946,7 +2138,7 @@ modePopover.addEventListener('click', (e) => {
   else delete state.override[today.str];
   saveState();
   modePopover.style.display = 'none';
-  rebuildDay(true);
+  rebuildDay();
   recordTodayStats(); // 切换模式后立即按新作息落盘今天的轨迹
   tick();
 });
@@ -2017,7 +2209,7 @@ function renderSessionRows() {
       saveState();
       renderSessionRows();
       renderSchedPreview();
-      rebuildDay(false);
+      rebuildDay();
       tick();
     });
     row.querySelectorAll('input').forEach((inp) => {
@@ -2066,7 +2258,7 @@ function commitSchedule(raw) {
   state.schedules[editingMode] = sessions;
   saveState();
   renderSchedPreview();
-  rebuildDay(false);
+  rebuildDay();
   tick();
 }
 
@@ -2106,7 +2298,7 @@ $('#addSessionBtn').addEventListener('click', () => {
   saveState();
   renderSessionRows();
   renderSchedPreview();
-  rebuildDay(false);
+  rebuildDay();
 });
 
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
@@ -2135,7 +2327,7 @@ function holidayItem(date, name, storeKey) {
     delete state[storeKey][date];
     saveState();
     renderHolidayTab();
-    rebuildDay(false);
+    rebuildDay();
     tick();
   });
   return div;
@@ -2155,7 +2347,7 @@ $('#holAddBtn').addEventListener('click', () => {
   $('#holName').value = '';
   saveState();
   renderHolidayTab();
-  rebuildDay(false);
+  rebuildDay();
   tick();
 });
 
@@ -2292,7 +2484,7 @@ $('#langSeg').addEventListener('click', (e) => {
   if (schedulesAreDefault()) localizeScheduleNames();
   saveState();
   applyI18n();
-  rebuildDay(true);
+  rebuildDay();
   tick();
   setQuote(currentState(day));
   if (settingsOverlay.classList.contains('open')) openSettings();
@@ -2368,7 +2560,7 @@ $('#importFile').addEventListener('change', (e) => {
       if (data.journal) state.journal = data.journal;
       if (data.summaryDismissed) state.summaryDismissed = data.summaryDismissed;
       saveState();
-      rebuildDay(true);
+      rebuildDay();
       openSettings();
       alert(t('imported'));
     } catch (err) {
@@ -2381,12 +2573,12 @@ $('#importFile').addEventListener('change', (e) => {
 
 $('#wipeBtn').addEventListener('click', () => {
   if (!confirm(t('confirmWipe'))) return;
-  localStorage.removeItem(STORE_KEY);
+  try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(BAR_THEME_KEY); } catch (e) {}
   // 就地重置（两种窗口通用；bar 面板不能整页 reload）
   state = defaultState();
   saveState();
   applyI18n();
-  rebuildDay(true);
+  rebuildDay();
   tick();
   setQuote(currentState(day));
   if (settingsOverlay.classList.contains('open')) openSettings();
@@ -2452,9 +2644,13 @@ function renderTodayView() {
   if (!logs.length) return html + '<div class="stEmpty">' + t('statsEmpty') + '</div>';
   html += '<div class="stLogTitle">' + t('todayLogTitle') + '</div><div class="stLog">';
   for (const b of logs) {
-    html += '<div class="stLogItem"><span class="t">' + fmtClock(b.s) + ' – ' + fmtClock(b.e) + '</span>'
+    const hasR = b.sk && b.r;
+    html += '<div class="stLogItem' + (hasR ? ' hasR' : '') + '"><div class="l1">'
+      + '<span class="t">' + fmtClock(b.s) + ' – ' + fmtClock(b.e) + '</span>'
       + (b.sk ? '<span class="sk">' + t('skippedTag') + '</span>' : '')
-      + '<span class="m">' + t('durM')(b.min) + '</span></div>';
+      + '<span class="m">' + t('durM')(b.min) + '</span></div>'
+      + (hasR ? '<div class="r">' + escHtml(b.r) + '</div>' : '')
+      + '</div>';
   }
   return html + '</div>';
 }
@@ -2653,6 +2849,26 @@ function journalListView() {
   return html;
 }
 
+/* 跳过记录：直接读 skips 事件日志（含理由与块快照），今日日志之外的两个归档视图共用 */
+function skipLogHtml(dateStr) {
+  const list = ((state.skips || {})[dateStr] || []).filter((x) => x && x.key);
+  if (!list.length) return '';
+  let rows = '';
+  for (const x of list) {
+    const type = x.type
+      ? '<span class="skType ' + (x.type === 'break' ? 'brk' : 'sty') + '">' + t(x.type === 'break' ? 'breakWord' : 'studyWord') + '</span>'
+      : '';
+    const range = x.start != null && x.end != null
+      ? fmtClock(x.start) + ' – ' + fmtClock(x.end)
+      : (x.at != null ? t('skipAtTime')(fmtClock(x.at)) : '');
+    rows += '<div class="skipRow">' + type
+      + '<span class="t">' + range + '</span>'
+      + '<span class="r">' + (x.reason ? escHtml(x.reason) : t('skipNoReason')) + '</span>'
+      + '</div>';
+  }
+  return '<div class="jSection"><div class="k">' + t('skipLogTitle') + '</div>' + rows + '</div>';
+}
+
 function journalDetailView(dateStr) {
   const e = (state.journal || {})[dateStr];
   if (!e) return journalListView();
@@ -2672,6 +2888,7 @@ function journalDetailView(dateStr) {
   } else {
     html += '<div class="jEmpty">' + t('jNoStats') + '</div>';
   }
+  html += skipLogHtml(dateStr);
   if (e.headline) html += '<div class="jHeadline">' + escHtml(e.headline) + '</div>';
   if (e.tags && e.tags.length) {
     html += '<div class="jSection"><div class="k">' + t('jTags') + '</div><div class="jTags">'
@@ -2751,10 +2968,25 @@ $('#skipEnable').addEventListener('click', () => {
 
 /* ==================== 启动 ==================== */
 
+// 一次性迁移：旧版单 App 的数据在 localStorage 里（桌面端沿用旧 userData 才有），
+// 首次启动搬入两 App 共享的 JSON 文件并打标记；菜单栏端/浏览器模式无此路径
+(function migrateLocalOnce() {
+  if (BAR_MODE || !bridge || !bridge.loadAllSync) return;
+  const all = readAll() || {};
+  if (all.migratedLocal) return;
+  let adopted = null;
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) adopted = JSON.parse(raw);
+  } catch (e) {}
+  bridge.saveAll({ state: adopted || state, barTheme: all.barTheme || barTheme, migratedLocal: true });
+  if (adopted) state = loadState(); // 迁移 adopted 刚写入共享文件，重读回来替换默认值
+})();
+
 document.addEventListener('click', () => initAudio(), { once: true });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { lastStatsWrite = 0; tick(); } });
 
-rebuildDay(true);
+rebuildDay();
 applyI18n();
 setQuote(currentState(day));
 renderPhase(currentState(day));

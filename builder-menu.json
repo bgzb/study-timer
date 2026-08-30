@@ -1,0 +1,30 @@
+{
+  "appId": "com.yongzhao.study-timer.menu",
+  "productName": "study-timer-menu",
+  "directories": {
+    "output": "dist/menu"
+  },
+  "files": [
+    "index.html",
+    "summary.html",
+    "main.js",
+    "preload.js",
+    "assets/**/*"
+  ],
+  "extraMetadata": {
+    "name": "study-timer-menu"
+  },
+  "mac": {
+    "category": "public.app-category.productivity",
+    "icon": "assets/icon.png",
+    "extendInfo": {
+      "LSUIElement": true
+    },
+    "target": [
+      {
+        "target": "default",
+        "arch": ["arm64"]
+      }
+    ]
+  }
+}
