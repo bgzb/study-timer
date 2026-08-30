@@ -1453,8 +1453,8 @@ function currentState(day) {
   return { phase: 'done' };
 }
 
-function computeStats(day) {
-  const now = nowSeconds();
+function computeStats(day, nowAt) {
+  const now = nowAt != null ? nowAt : nowSeconds();
   let done = 0, total = 0, focusMin = 0;
   for (const b of day.blocks) {
     if (b.type !== 'study') continue;
@@ -1468,10 +1468,10 @@ function computeStats(day) {
 
 /* 每日轨迹快照：幂等重算"今天到目前为止"并覆盖写入（重启/崩溃不会重复计数）。
    只在主窗口调用——菜单栏面板是纯展示，避免双写。 */
-function recordTodayStats() {
+function recordTodayStats(nowAt) {
   if (BAR_MODE) return;
-  const now = nowSeconds();
-  const stats = computeStats(day);
+  const now = nowAt != null ? nowAt : nowSeconds();
+  const stats = computeStats(day, nowAt);
   const blocks = [];
   let skipped = 0;
   for (const b of day.blocks) {
@@ -1875,7 +1875,9 @@ function setQuote(st) {
 function tick() {
   const t = getToday();
   if (t.str !== today.str) {
-    recordTodayStats(); // 跨天：先把昨天的最终轨迹结转，再进入新的一天
+    // 跨天：以 23:59:59 结算昨天的最终轨迹。此刻真实时钟已进入新的一天，
+    // 若直接用 nowSeconds() 重算"昨天到现在"会得到全零，覆盖掉昨天的记录
+    recordTodayStats(86399);
     rebuildDay(true);
   }
   const st = currentState(day);
