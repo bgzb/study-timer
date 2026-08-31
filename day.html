@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时间块记录</title>
+<link rel="stylesheet" href="src/renderer/styles/day.css">
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <header>
+    <div id="dateLine">—</div>
+    <h1 id="titleLine">🧩 时间块记录</h1>
+  </header>
+
+  <div class="recap" id="recapCard"></div>
+  <div id="blockList"></div>
+
+  <footer>
+    <button id="resetBtn">还原默认</button>
+    <button id="saveBtn">保存</button>
+  </footer>
+</div>
+
+<div id="savedMask">
+  <div class="big">✅</div>
+  <div class="txt" id="savedTxt">已保存</div>
+</div>
+
+<script src="src/renderer/shared/namespace.js"></script>
+<script src="src/renderer/shared/date-utils.js"></script>
+<script src="src/renderer/shared/dom-utils.js"></script>
+<script src="src/renderer/shared/state-schema.js"></script>
+<script src="src/renderer/shared/state-client.js"></script>
+<script src="src/renderer/shared/schedule-model.js"></script>
+<script src="src/renderer/shared/stats-model.js"></script>
+<script src="src/renderer/shared/skip-model.js"></script>
+<script src="src/renderer/day/app.js"></script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 一个为"间歇学习"设计的本地计时应用：按你的作息自动提醒什么时候专注学习、什么时候起身休息，带实时倒计时、今日时间轴、温和的随机激励语。
 
-界面与全部业务逻辑都在 `index.html` 一个文件里，既可以作为独立 App 运行（推荐），也可以直接用浏览器打开。
+界面模板与业务模块按职责分层：主页、每日总结和时间块编辑分别保留独立 HTML，渲染层共享日期/状态/作息/统计模型；Electron 主进程也拆为启动、共享状态和职责协调模块。既可以作为独立 App 运行（推荐），也可以直接用浏览器打开。
 
 ## 安装版 App（推荐）
 
@@ -89,10 +89,22 @@ index.html?t=21:45   # 全天完成
 
 ```
 study-timer/
-├── index.html      # 界面 + 计时引擎 + 激励语库 + 设置（核心，改这里）
-├── main.js         # Electron 主进程：窗口、托盘、自启、关窗驻留
-├── preload.js      # 渲染进程 ↔ 主进程 桥接
-├── gen_icons.py    # 图标生成脚本（python3 运行，纯标准库）
-├── assets/         # 图标资源
-└── package.json    # 依赖与打包配置
+├── index.html / day.html / summary.html  # 三个页面模板
+├── src/renderer/shared/                  # 状态、日期、作息、统计等共享领域层
+├── src/renderer/home/                    # 主页按职责拆分的 classic 脚本
+├── src/renderer/styles/                  # 页面样式
+├── src/main/                             # 主进程 bootstrap、共享状态、职责协调
+├── main.js / preload.js                  # 稳定入口与安全桥接
+├── tests/                                # Node 内置领域测试
+├── scripts/check-source.js               # 无依赖源码检查
+├── gen_icons.py                          # 图标生成脚本
+├── assets/                               # 图标资源
+└── package.json                          # 依赖与打包配置
+```
+
+源码检查与领域测试：
+
+```bash
+npm test
+npm run check
 ```

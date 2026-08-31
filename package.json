@@ -8,6 +8,8 @@
   "scripts": {
     "start": "electron .",
     "start:menu": "STUDY_TIMER_MENU=1 electron .",
+    "test": "node --test tests",
+    "check": "node scripts/check-source.js",
     "dist": "electron-builder --mac --arm64",
     "dist:menu": "electron-builder --mac --arm64 --config builder-menu.json",
     "dist:all": "npm run dist && npm run dist:menu"
@@ -24,10 +26,12 @@
     },
     "files": [
       "index.html",
+      "day.html",
       "summary.html",
       "main.js",
       "preload.js",
-      "assets/**/*"
+      "assets/**/*",
+      "src/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",

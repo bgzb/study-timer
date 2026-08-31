@@ -6,10 +6,12 @@
   },
   "files": [
     "index.html",
+    "day.html",
     "summary.html",
     "main.js",
     "preload.js",
-    "assets/**/*"
+    "assets/**/*",
+    "src/**/*"
   ],
   "extraMetadata": {
     "name": "study-timer-menu"

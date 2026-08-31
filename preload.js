@@ -24,5 +24,7 @@ contextBridge.exposeInMainWorld('studyTimer', {
   resizeBar: (w, h) => ipcRenderer.send('bar:resize', { w, h }),
   setBarVibrancy: (on) => ipcRenderer.send('bar:vibrancy', on),
   // 每日总结窗口（date 为 'YYYY-MM-DD'；focus=true 抢焦点，false 柔和弹出）
-  openSummary: (date, focus) => ipcRenderer.send('summary:open', { date, focus })
+  openSummary: (date, focus) => ipcRenderer.send('summary:open', { date, focus }),
+  // 每日时间块编辑窗口（date 为 'YYYY-MM-DD'）
+  openDay: (date) => ipcRenderer.send('day:open', { date })
 });
