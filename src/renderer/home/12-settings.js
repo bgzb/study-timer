@@ -58,7 +58,7 @@ function renderSessionRows() {
       '<input class="s-name" value="' + esc(s.name) + '" placeholder="' + t('ph_name') + '">' +
       '<input class="s-time" value="' + esc(s.start) + '" placeholder="09:00">' +
       '<input class="s-seq" value="' + s.seq.join(' ') + '" placeholder="40 10 40">' +
-      '<button class="s-del" title="' + t('delSession') + '">✕</button>';
+      '<button class="s-del" title="' + t('delSession') + '" aria-label="' + t('delSession') + '">' + iconSvg('delete', { size: 16 }) + '</button>';
     row.querySelector('.s-del').addEventListener('click', () => {
       sessions.splice(i, 1);
       saveState();
@@ -177,7 +177,7 @@ function renderHolidayTab() {
 function holidayItem(date, name, storeKey) {
   const div = document.createElement('div');
   div.className = 'list-item';
-  div.innerHTML = '<span class="li-date">' + date + '</span><span class="li-main">' + esc(name) + '</span><button title="删除">✕</button>';
+  div.innerHTML = '<span class="li-date">' + date + '</span><span class="li-main">' + esc(name) + '</span><button title="删除" aria-label="删除">' + iconSvg('delete', { size: 16 }) + '</button>';
   div.querySelector('button').addEventListener('click', () => {
     delete state[storeKey][date];
     saveState();
@@ -225,7 +225,7 @@ function renderNotifyTab() {
   for (const [id, p] of Object.entries(SOUND_PRESETS)) {
     const card = document.createElement('div');
     card.className = 'soundCard' + (state.sound === id ? ' selected' : '');
-    card.innerHTML = '<span class="sc-name">' + t('sound_' + id) + '</span><button class="sc-play" title="▶">▶</button>';
+    card.innerHTML = '<span class="sc-name">' + t('sound_' + id) + '</span><button class="sc-play" title="播放" aria-label="播放">' + iconSvg('play', { size: 14 }) + '</button>';
     card.addEventListener('click', () => {
       state.sound = id;
       saveState();
@@ -253,7 +253,7 @@ $('#volRange').addEventListener('input', (e) => {
 $('#volRange').addEventListener('change', () => playSound());
 $('#testNotifyBtn').addEventListener('click', () => {
   const bannerWillSound = !!(bridge && state.notifications);
-  notify('📚 ' + t('appName'), t('testNotifyBody'));
+  notify(t('appName'), t('testNotifyBody'));
   // 横幅会自带系统提示音；无横幅场景本地补一声
   if (!bannerWillSound) playSound();
 });
@@ -285,7 +285,7 @@ function renderQuotesTab() {
   pool.forEach((q, i) => {
     const item = document.createElement('div');
     item.className = 'list-item';
-    item.innerHTML = '<span class="li-main">' + esc(q) + '</span><button title="删除">✕</button>';
+    item.innerHTML = '<span class="li-main">' + esc(q) + '</span><button title="删除" aria-label="删除">' + iconSvg('delete', { size: 16 }) + '</button>';
     item.querySelector('button').addEventListener('click', () => {
       pool.splice(i, 1);
       saveState();

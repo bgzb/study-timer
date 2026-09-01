@@ -79,7 +79,7 @@ function fireTransition(st) {
   if (!bannerWillSound) playSound();
   const snd = currentSysSound();
   if (st.phase === 'study') {
-    const q = pickQuote(anchorPoolFor(st.session, st.block));
+    const q = pickQuote(StudyTimerShared.anchorPoolFor(st.session, st.block));
     notify(t('studyStart')(st.session.name), blockRangeText(st.block) + '\n' + q, snd);
   } else if (st.phase === 'break') {
     notify(t('breakNotify'), blockRangeText(st.block) + '\n' + pickQuote('break'), snd);

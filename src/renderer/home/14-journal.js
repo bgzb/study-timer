@@ -2,7 +2,14 @@
 
 const journalOverlay = $('#journalOverlay');
 let journalView = 'list'; // 'list' 或详情日期 'YYYY-MM-DD'
-const JOURNAL_MOODS = ['😤', '😕', '😐', '😊', '🤩'];
+const JOURNAL_MOODS = ['mood0', 'mood1', 'mood2', 'mood3', 'mood4'];
+
+function ratingIcons(value, size) {
+  if (!value || !iconSvg) return '';
+  return '<span class="stars" aria-label="' + value + '/5">'
+    + Array.from({ length: Math.min(5, value) }, () => iconSvg('star', { size: size || 12 })).join('')
+    + '</span>';
+}
 
 function escHtml(s) {
   return String(s == null ? '' : s)
@@ -26,18 +33,18 @@ function journalListView() {
   let html = '';
   if (!j[today.str]) {
     html += '<div class="jTodayCard"><span>' + t('journalTodayCard') + '</span>'
-      + '<button id="jTodayBtn">' + t('journalFillToday') + '</button></div>';
+      + '<button id="jTodayBtn">' + iconText('journal', t('journalFillToday')) + '</button></div>';
   }
   if (!keys.length) return html + '<div class="jEmpty">' + t('journalEmpty') + '</div>';
   for (const k of keys) {
     const e = j[k];
     const min = dayStatOf(k) ? dayStatOf(k).focusMin : 0;
-    const stars = e.rating > 0 ? '<span class="stars">' + '★'.repeat(Math.min(5, e.rating)) + '</span>' : '';
+    const stars = ratingIcons(e.rating, 12);
     const head = e.headline ? '<div class="jHead">' + escHtml(e.headline) + '</div>' : '';
     const tags = (e.tags && e.tags.length)
       ? '<div class="jTags">' + e.tags.map((x) => '<span class="jTag">' + escHtml(x) + '</span>').join('') + '</div>' : '';
     html += '<div class="jRow" data-date="' + k + '">'
-      + '<span class="jEmoji">' + (e.mood >= 0 && e.mood < JOURNAL_MOODS.length ? JOURNAL_MOODS[e.mood] : '🗒') + '</span>'
+      + '<span class="jEmoji">' + (e.mood >= 0 && e.mood < JOURNAL_MOODS.length ? iconSvg(JOURNAL_MOODS[e.mood], { size: 22 }) : iconSvg('journal', { size: 22 })) + '</span>'
       + '<div class="jMain"><div class="jDate">' + journalDateLabel(k) + stars + '</div>' + head + tags + '</div>'
       + '<span class="jMin">' + fmtMin(min) + '</span>'
       + '</div>';
@@ -76,11 +83,11 @@ function journalDetailView(dateStr) {
   const e = (state.journal || {})[dateStr];
   if (!e) return journalListView();
   const st = dayStatOf(dateStr);
-  let html = '<button class="jBackBtn" id="jBackBtn">' + t('jBack') + '</button>';
+  let html = '<button class="jBackBtn" id="jBackBtn">' + iconText('back', t('jBack')) + '</button>';
   html += '<div class="jDetailHead">'
-    + '<div class="jEmojiBig">' + (e.mood >= 0 && e.mood < JOURNAL_MOODS.length ? JOURNAL_MOODS[e.mood] : '🗒') + '</div>'
+    + '<div class="jEmojiBig">' + (e.mood >= 0 && e.mood < JOURNAL_MOODS.length ? iconSvg(JOURNAL_MOODS[e.mood], { size: 32 }) : iconSvg('journal', { size: 32 })) + '</div>'
     + '<div class="jd">' + journalDateLabel(dateStr) + '</div>'
-    + (e.rating > 0 ? '<div class="stars">' + '★'.repeat(Math.min(5, e.rating)) + '</div>' : '')
+    + (e.rating > 0 ? ratingIcons(e.rating, 14) : '')
     + '</div>';
   if (st) {
     html += '<div class="stSummary">'
@@ -107,8 +114,8 @@ function journalDetailView(dateStr) {
   };
   html += '<div class="jFoot"><span class="time">' + t('jSavedAt') + ' ' + fmtTime(e.savedAt)
     + (e.editedAt ? ' · ' + t('jEditedAt') + ' ' + fmtTime(e.editedAt) : '') + '</span>'
-    + '<button class="jEditBtn" id="jDayBtn" data-date="' + dateStr + '">' + t('jDayBtn') + '</button>'
-    + '<button class="jEditBtn" id="jEditBtn" data-date="' + dateStr + '">' + t('jEdit') + '</button></div>';
+    + '<button class="jEditBtn" id="jDayBtn" data-date="' + dateStr + '">' + iconText('time', t('jDayBtn')) + '</button>'
+    + '<button class="jEditBtn" id="jEditBtn" data-date="' + dateStr + '">' + iconText('edit', t('jEdit')) + '</button></div>';
   return html;
 }
 

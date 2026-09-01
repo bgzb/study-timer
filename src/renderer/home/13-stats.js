@@ -56,7 +56,7 @@ function renderTodayView() {
   const logs = (st && st.blocks) || [];
   if (!logs.length) return html + '<div class="stEmpty">' + t('statsEmpty') + '</div>';
   html += '<div class="stLogTitle">' + t('todayLogTitle')
-    + '<button id="stEditDayBtn">' + t('editDayBtn') + '</button></div><div class="stLog">';
+    + '<button id="stEditDayBtn">' + iconText('edit', t('editDayBtn')) + '</button></div><div class="stLog">';
   for (const b of logs) {
     const hasR = b.sk && b.r;
     html += '<div class="stLogItem' + (hasR ? ' hasR' : '') + '"><div class="l1">'

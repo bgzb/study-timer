@@ -1,47 +1,47 @@
 'use strict';
 
 /* ==================== 常量 ==================== */
-const MOODS = ['😤', '😕', '😐', '😊', '🤩'];
+const MOODS = ['mood0', 'mood1', 'mood2', 'mood3', 'mood4'];
 const T = {
   zh: {
-    titleNew: '✍ 今日复盘', titleEdit: '✍ 编辑这篇总结',
+    titleNew: '今日复盘', titleEdit: '编辑这篇总结',
     recapFocus: '专注', recapDone: '完成', recapSkip: '跳过',
     recapNone: '这一天没有学习记录',
     studyWord: '学习', breakWord: '休息',
     skipLogTitle: '跳过记录', skipNoReason: '未填写原因', skipAtTime: (tm) => '跳过于 ' + tm,
-    editDayBtn: '✏ 编辑时间块',
+    editDayBtn: '编辑时间块',
     durH: (h, m) => h + '时' + m + '分', durM: (m) => m + '分',
     block: (d, t2) => d + '/' + t2,
     lbHeadline: '一句话形容今天', phHeadline: '今天像…',
     lbMood: '今日心情', lbRating: '今日自评',
     moodLabels: ['煎熬', '不佳', '平静', '不错', '超赞'],
-    lbTags: '给今天贴个标签', tagSub: '可多选，也可自定义', phTag: '自定义标签…', tagAdd: '＋',
+    lbTags: '给今天贴个标签', tagSub: '可多选，也可自定义', phTag: '自定义标签…', tagAdd: '添加标签',
     lbGood: '今天做得好的', phGood: '哪些事推进顺利？哪些瞬间值得记住？',
     lbImprove: '可以改进的', phImprove: '哪里分心了？下次遇到同样情况怎么应对？',
     lbPlan: '明天想做的', phPlan: '给明天的自己留一句话或一个小目标…',
     later: '稍后再说', saveNew: '保存今日总结', saveEdit: '保存修改',
-    saved: '已保存，明天见 👋',
+    saved: '已保存，明天见',
     weekend: ['日', '一', '二', '三', '四', '五', '六'],
     presetTags: ['专注', '高效', '拖延', '疲惫', '熬夜', '运动', '阅读', '复盘']
   },
   en: {
-    titleNew: '✍ Daily Review', titleEdit: '✍ Edit this review',
+    titleNew: 'Daily Review', titleEdit: 'Edit this review',
     recapFocus: 'Focus', recapDone: 'Blocks', recapSkip: 'Skipped',
     recapNone: 'No study records this day',
     studyWord: 'Study', breakWord: 'Break',
     skipLogTitle: 'Skipped blocks', skipNoReason: 'No reason given', skipAtTime: (tm) => 'skipped at ' + tm,
-    editDayBtn: '✏ Edit blocks',
+    editDayBtn: 'Edit blocks',
     durH: (h, m) => h + 'h ' + m + 'm', durM: (m) => m + 'm',
     block: (d, t2) => d + '/' + t2,
     lbHeadline: 'Describe today in one line', phHeadline: 'Today felt like…',
     lbMood: 'Mood', lbRating: 'Rating',
     moodLabels: ['Rough', 'Meh', 'Okay', 'Good', 'Great'],
-    lbTags: 'Tag the day', tagSub: 'multi-select, custom ok', phTag: 'Custom tag…', tagAdd: '＋',
+    lbTags: 'Tag the day', tagSub: 'multi-select, custom ok', phTag: 'Custom tag…', tagAdd: 'Add tag',
     lbGood: 'What went well', phGood: 'What moved forward? Any moments worth keeping?',
     lbImprove: 'To improve', phImprove: 'Where did focus slip? How to handle it next time?',
     lbPlan: 'For tomorrow', phPlan: 'Leave a note or a small goal for tomorrow…',
     later: 'Not now', saveNew: 'Save review', saveEdit: 'Save changes',
-    saved: 'Saved — see you tomorrow 👋',
+    saved: 'Saved — see you tomorrow',
     weekend: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
     presetTags: ['Focused', 'Productive', 'Procrastinated', 'Tired', 'Late night', 'Exercise', 'Reading', 'Review']
   }
@@ -56,6 +56,7 @@ const pad2 = shared.pad2;
 const fmtClock = shared.fmtClock;
 const escText = shared.escHtml;
 const todayStr = shared.todayStr;
+const { iconSvg, iconText } = window.StudyTimerIcons || {};
 
 const params = new URLSearchParams(location.search);
 const date = shared.parseDate(params.get('date'));
@@ -66,7 +67,7 @@ function tt(key) { const v = T[lang][key]; return v != null ? v : T.zh[key]; }
 /* ==================== 静态文案渲染 ==================== */
 
 function renderChrome() {
-  document.title = tt('titleNew').replace('✍ ', '');
+  document.title = tt('titleNew');
   const d = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)));
   const now = new Date();
   const zh = lang !== 'en';
@@ -75,6 +76,7 @@ function renderChrome() {
     : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getDate() + ' · ' + tt('weekend')[d.getDay()];
   const yr = d.getFullYear() !== now.getFullYear() ? d.getFullYear() + (zh ? '年' : ' ') : '';
   $('#dateLine').textContent = yr + dayLabel;
+  $('#titleLine .title-text').textContent = tt('titleNew');
 
   $('#lbHeadline').textContent = tt('lbHeadline');
   $('#headline').placeholder = tt('phHeadline');
@@ -83,13 +85,20 @@ function renderChrome() {
   $('#lbTags').textContent = tt('lbTags');
   $('#tagSub').textContent = tt('tagSub');
   $('#tagInput').placeholder = tt('phTag');
-  $('#tagAddBtn').textContent = tt('tagAdd');
+  $('#tagAddBtn').innerHTML = iconSvg('add', { size: 16 });
+  $('#tagAddBtn').title = tt('tagAdd');
+  $('#tagAddBtn').setAttribute('aria-label', tt('tagAdd'));
   $('#lbGood').textContent = tt('lbGood'); $('#good').placeholder = tt('phGood');
   $('#lbImprove').textContent = tt('lbImprove'); $('#improve').placeholder = tt('phImprove');
   $('#lbPlan').textContent = tt('lbPlan'); $('#planT').placeholder = tt('phPlan');
   $('#laterBtn').textContent = tt('later');
   $('#savedTxt').textContent = tt('saved');
-  $('#editDayBtn').textContent = tt('editDayBtn');
+  $('#editDayBtn').innerHTML = iconText('edit', tt('editDayBtn'));
+  if (iconSvg) {
+    document.querySelectorAll('span[data-icon]').forEach((slot) => {
+      if (!slot.childElementCount) slot.innerHTML = iconSvg(slot.dataset.icon, { size: slot.dataset.iconSize || 18 });
+    });
+  }
 }
 
 function $(sel) { return document.querySelector(sel); }
@@ -145,7 +154,7 @@ function renderMoodRow() {
   MOODS.forEach((emoji, i) => {
     const b = document.createElement('button');
     b.className = 'moodBtn' + (mood === i ? ' on' : '');
-    b.innerHTML = emoji + '<span class="ml">' + tt('moodLabels')[i] + '</span>';
+    b.innerHTML = iconSvg(emoji, { size: 24 }) + '<span class="ml">' + tt('moodLabels')[i] + '</span>';
     b.addEventListener('click', () => { mood = (mood === i ? -1 : i); renderMoodRow(); updateSaveBtn(); });
     row.appendChild(b);
   });
@@ -157,7 +166,7 @@ function renderStarRow() {
   for (let i = 1; i <= 5; i++) {
     const b = document.createElement('button');
     b.className = 'starBtn' + (i <= rating ? ' on' : '');
-    b.textContent = i <= rating ? '★' : '☆';
+    b.innerHTML = iconSvg('star', { size: 18 });
     b.addEventListener('click', () => { rating = (rating === i ? 0 : i); renderStarRow(); updateSaveBtn(); });
     row.appendChild(b);
   }
@@ -192,7 +201,7 @@ function renderTagRow() {
     const b = document.createElement('button');
     b.className = 'tagChip custom on';
     b.title = lang === 'en' ? 'Click to remove' : '点击移除';
-    b.innerHTML = escText(c) + '<span class="x">✕</span>';
+    b.innerHTML = escText(c) + '<span class="x">' + iconSvg('close', { size: 12 }) + '</span>';
     b.addEventListener('click', () => {
       customTags = customTags.filter((x) => x !== c);
       renderTagRow(); updateSaveBtn();
@@ -290,7 +299,7 @@ function prefill() {
     if (presets.includes(tag)) presetOn.add(tag);
     else if (tag && !customTags.includes(tag)) customTags.push(tag);
   });
-  $('#titleLine').textContent = tt('titleEdit');
+  $('#titleLine .title-text').textContent = tt('titleEdit');
   $('#saveBtn').textContent = tt('saveEdit');
 }
 

@@ -11,7 +11,7 @@
 <div class="wrap" id="wrap">
   <header>
     <div id="dateLine">—</div>
-    <h1 id="titleLine">🧩 时间块记录</h1>
+    <h1 id="titleLine"><span data-icon="time"></span><span class="title-text">时间块记录</span></h1>
   </header>
 
   <div class="recap" id="recapCard"></div>
@@ -24,11 +24,12 @@
 </div>
 
 <div id="savedMask">
-  <div class="big">✅</div>
+  <div class="big"><span data-icon="done"></span></div>
   <div class="txt" id="savedTxt">已保存</div>
 </div>
 
 <script src="src/renderer/shared/namespace.js"></script>
+<script src="src/renderer/shared/icons.js"></script>
 <script src="src/renderer/shared/date-utils.js"></script>
 <script src="src/renderer/shared/dom-utils.js"></script>
 <script src="src/renderer/shared/state-schema.js"></script>

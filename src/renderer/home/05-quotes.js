@@ -12,18 +12,6 @@ function pickQuote(poolId) {
   return pool[idx];
 }
 
-function anchorPoolFor(session, block) {
-  if (session && session.isExtra) return 'extraStart';
-  if (block.bIdx > 0) return 'study';
-  const name = (session && session.name) || '';
-  if (/上午|早上|早间|晨|morning/i.test(name)) return 'morningFirst';
-  if (/下午|午后|afternoon/i.test(name)) return 'afternoonFirst';
-  if (/晚|夜|evening|night/i.test(name)) return 'eveningFirst';
-  if (session && session.idx === 0) return 'morningFirst';
-  if (session && session.idx === 1) return 'afternoonFirst';
-  return 'eveningFirst';
-}
-
 function completedExtraSessionOf(st) {
   if (!day || !day.sess.length) return null;
   let session = null;
@@ -35,9 +23,8 @@ function completedExtraSessionOf(st) {
 }
 
 function currentPoolOf(st) {
-  if (st.phase === 'study') return anchorPoolFor(st.session, st.block);
+  if (st.phase === 'study') return StudyTimerShared.anchorPoolFor(st.session, st.block);
   if (st.phase === 'break' || st.phase === 'gap') return 'break';
   if (completedExtraSessionOf(st)) return 'extraEnd';
-  if (st.phase === 'wait') return 'sessionEnd';
-  return 'dayDone';
+  return StudyTimerShared.poolForState(st);
 }

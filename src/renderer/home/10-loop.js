@@ -40,7 +40,7 @@ function renderPhase(st) {
   card.className = 'ph-' + st.phase;
   if (st.phase === 'study' || st.phase === 'break') {
     const isStudy = st.phase === 'study';
-    label.textContent = (isStudy ? t('studying') : t('breakTime')) + ' · ' + st.session.name;
+    setIconLabel(label, isStudy ? 'study' : 'break', (isStudy ? t('studying') : t('breakTime')) + ' · ' + st.session.name);
     cd.textContent = fmtCountdown(st.block.effEnd - now);
     range.textContent = blockRangeText(st.block);
     const nbAny = day.blocks.find((b) => b.effEnd > st.block.effEnd + 0.5);
@@ -55,32 +55,79 @@ function renderPhase(st) {
   } else if (st.phase === 'gap') {
     // 跳过截出的间隙：倒计时到下一块原定开始，进度条按间隙流逝比例
     const word = st.next.type === 'study' ? t('studyWord') : t('breakWord');
-    label.textContent = t('gapLabel')(word, fmtClock(st.next.start));
+    setIconLabel(label, 'skip', t('gapLabel')(word, fmtClock(st.next.start)));
     cd.textContent = fmtCountdown(st.next.start - now);
     range.textContent = t('gapRange')(latestSkipReason());
     next.textContent = t('nextBlock')(word, fmtClock(st.next.start));
     const gTotal = st.next.start - st.gapStart;
     bar.style.width = (gTotal > 0 ? Math.min(100, ((now - st.gapStart) / gTotal) * 100) : 100) + '%';
   } else if (st.phase === 'wait') {
-    label.textContent = t('waitLabel')(st.next.name, fmtClock(st.next.start));
+    setIconLabel(label, 'time', t('waitLabel')(st.next.name, fmtClock(st.next.start)));
     cd.textContent = fmtCountdown(st.next.start - now);
     range.textContent = t('nowLongBreak');
     next.textContent = t('nextSessionStudy')(st.next.name, fmtClock(st.next.start));
     bar.style.width = '0%';
   } else {
-    label.textContent = t('doneToday');
+    setIconLabel(label, 'done', t('doneToday'));
     const stats = computeStats(day);
-    cd.textContent = '✓';
+    cd.textContent = t('doneWord');
     range.textContent = t('doneStats')(stats.done, stats.total, stats.focusMin);
     next.textContent = t('restWell');
     bar.style.width = '100%';
   }
-  document.title = (cd.textContent === '✓' ? t('doneWord') : cd.textContent) + ' · ' + t('appName');
+  document.title = cd.textContent + ' · ' + t('appName');
 }
+
+function setTimelineTip(el, text) {
+  if (!text) return;
+  el.dataset.tooltip = text;
+  el.setAttribute('aria-label', text);
+  el.tabIndex = 0;
+}
+
+function showTimelineTooltip(target) {
+  const tooltip = $('#timelineTooltip');
+  const text = target && target.dataset.tooltip;
+  if (!tooltip || !text) return;
+  tooltip.textContent = text;
+  tooltip.classList.add('show');
+  tooltip.setAttribute('aria-hidden', 'false');
+  const position = StudyTimerShared.timelineTooltipPosition(
+    target.getBoundingClientRect(),
+    tooltip.getBoundingClientRect(),
+    { width: window.innerWidth, height: window.innerHeight }
+  );
+  tooltip.style.left = position.left + 'px';
+  tooltip.style.top = position.top + 'px';
+}
+
+function hideTimelineTooltip() {
+  const tooltip = $('#timelineTooltip');
+  if (!tooltip) return;
+  tooltip.classList.remove('show');
+  tooltip.setAttribute('aria-hidden', 'true');
+}
+
+const timelineCardEl = $('#timelineCard');
+timelineCardEl.addEventListener('pointerover', (e) => {
+  const target = e.target.closest('[data-tooltip]');
+  if (target && timelineCardEl.contains(target)) showTimelineTooltip(target);
+});
+timelineCardEl.addEventListener('pointerout', (e) => {
+  const target = e.target.closest('[data-tooltip]');
+  if (target && !target.contains(e.relatedTarget)) hideTimelineTooltip();
+});
+timelineCardEl.addEventListener('focusin', (e) => {
+  const target = e.target.closest('[data-tooltip]');
+  if (target) showTimelineTooltip(target);
+});
+timelineCardEl.addEventListener('focusout', hideTimelineTooltip);
+window.addEventListener('resize', hideTimelineTooltip);
 
 function renderTimeline() {
   const bars = $('#timelineBars');
   const labels = $('#timelineLabels');
+  hideTimelineTooltip();
   bars.innerHTML = '';
   labels.innerHTML = '';
   currentFillEl = null;
@@ -90,7 +137,6 @@ function renderTimeline() {
   }
   const t0 = day.sess[0].start;
   const t1 = day.sess[day.sess.length - 1].end;
-  const span = Math.max(1, t1 - t0);
   const now = nowSeconds();
   const items = [];
   let cursor = t0;
@@ -121,10 +167,10 @@ function renderTimeline() {
     if (it.type !== 'gap') el.className += (it.end <= now ? ' tl-past' : '') + (it.active ? ' tl-current' : '');
     el.style.flexGrow = String(Math.max(1, it.end - it.start));
     if (it.block) {
-      el.title = day.sess[it.block.sIdx].name + ' ' + fmtClock(it.block.start) + '–' + fmtClock(it.block.effEnd) + ' ' +
-        (it.block.type === 'study' ? t('studyWord') : t('breakWord')) + ' ' + it.block.minutes + t('min');
+      setTimelineTip(el, day.sess[it.block.sIdx].name + ' ' + fmtClock(it.block.start) + '–' + fmtClock(it.block.effEnd) + ' ' +
+        (it.block.type === 'study' ? t('studyWord') : t('breakWord')) + ' ' + it.block.minutes + t('min'));
     } else if (it.from) {
-      el.title = t('skippedTag') + (it.reason ? ' · ' + it.reason : '');
+      setTimelineTip(el, t('skippedTag') + (it.reason ? ' · ' + it.reason : ''));
     }
     if (it.active && it.block) {
       const fill = document.createElement('div');
@@ -134,18 +180,25 @@ function renderTimeline() {
     }
     bars.appendChild(el);
   }
-  for (const s of day.sess) {
-    const lab = document.createElement('div');
-    lab.className = 'tl-label';
-    lab.style.left = ((s.start - t0) / span) * 100 + '%';
-    lab.textContent = s.name + ' ' + fmtClock(s.start);
-    labels.appendChild(lab);
+  const markers = StudyTimerShared.buildTimelineMarkers(day.sess, t0, t1);
+  for (const markerInfo of markers) {
+    const marker = document.createElement('div');
+    marker.className = markerInfo.type === 'end'
+      ? 'tl-marker tl-marker-end'
+      : 'tl-marker' + (markerInfo.isExtra ? ' tl-marker-extra' : '');
+    marker.style.left = markerInfo.position + '%';
+    marker.setAttribute('role', 'img');
+    if (markerInfo.type === 'end') {
+      const text = t('endAt') + ' ' + fmtClock(t1);
+      setTimelineTip(marker, text);
+    } else {
+      const session = day.sess[markerInfo.sessionIndex];
+      const text = session.name + ' ' + fmtClock(session.start) + '–' + fmtClock(session.end) +
+        (session.isExtra ? ' · ' + t('extraTitle') : '');
+      setTimelineTip(marker, text);
+    }
+    labels.appendChild(marker);
   }
-  const endLab = document.createElement('div');
-  endLab.className = 'tl-label end';
-  endLab.style.right = '0';
-  endLab.textContent = t('endAt') + ' ' + fmtClock(t1);
-  labels.appendChild(endLab);
 }
 
 function renderStats() {
@@ -161,9 +214,7 @@ function renderStats() {
 }
 
 function setQuote(st) {
-  const pool = currentPoolOf(st);
-  let q = pickQuote(pool);
-  if (st.phase === 'wait' && st.prev) q = q.replace('{session}', st.prev.name);
+  const q = StudyTimerShared.quoteForState(st, () => pickQuote(currentPoolOf(st)));
   currentQuote = q;
   $('#quoteText').textContent = q;
   scheduleBarResize();

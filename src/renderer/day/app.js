@@ -3,7 +3,7 @@
 /* ==================== 常量与文案 ==================== */
 const T = {
   zh: {
-    title: '🧩 时间块记录',
+    title: '时间块记录',
     recapFocus: '专注', recapDone: '完成', recapSkip: '跳过',
     recapNone: '这一天没有时段安排',
     studyWord: '学习', breakWord: '休息', min: '分钟',
@@ -15,13 +15,13 @@ const T = {
     phActBreak: '默认：休息（可填 小憩、散步…）',
     phNote: '补充说明…',
     focusLabel: '算专注', focusOffLabel: '不算专注',
-    reset: '还原默认', save: '保存', saved: '已保存 ✓',
+    reset: '还原默认', save: '保存', saved: '已保存',
     confirmReset: '还原该日全部时间块编辑（做的事/算专注/备注）？',
     weekend: ['日', '一', '二', '三', '四', '五', '六'],
     durM: (m) => m + ' 分钟'
   },
   en: {
-    title: '🧩 Block Log',
+    title: 'Block Log',
     recapFocus: 'Focus', recapDone: 'Blocks', recapSkip: 'Skipped',
     recapNone: 'No sessions scheduled this day',
     studyWord: 'Study', breakWord: 'Break', min: ' min',
@@ -33,7 +33,7 @@ const T = {
     phActBreak: 'Default: break (e.g. nap, walk…)',
     phNote: 'Extra notes…',
     focusLabel: 'Counts as focus', focusOffLabel: 'Not focus',
-    reset: 'Reset', save: 'Save', saved: 'Saved ✓',
+    reset: 'Reset', save: 'Save', saved: 'Saved',
     confirmReset: 'Reset all block edits (activity/focus/note) for this day?',
     weekend: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
     durM: (m) => m + 'm'
@@ -50,6 +50,7 @@ const fmtClock = shared.fmtClock;
 const escText = shared.escHtml;
 const todayStr = shared.todayStr;
 const nowSeconds = shared.nowSeconds;
+const { iconSvg } = window.StudyTimerIcons || {};
 
 const params = new URLSearchParams(location.search);
 const date = shared.parseDate(params.get('date'));
@@ -78,17 +79,22 @@ function computeRecap(edits) { return shared.computeRecap(built, edits, settleAt
 function $(sel) { return document.querySelector(sel); }
 
 function renderChrome() {
-  document.title = tt('title').replace('🧩 ', '');
+  document.title = tt('title');
   const p = date.split('-').map(Number);
   const d = new Date(p[0], p[1] - 1, p[2]);
   const zh = lang !== 'en';
   $('#dateLine').textContent = zh
     ? (d.getMonth() + 1) + '月' + d.getDate() + '日 · 星期' + tt('weekend')[d.getDay()]
     : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()] + ' ' + d.getDate() + ' · ' + tt('weekend')[d.getDay()];
-  $('#titleLine').textContent = tt('title');
+  $('#titleLine .title-text').textContent = tt('title');
   $('#resetBtn').textContent = tt('reset');
   $('#saveBtn').textContent = tt('save');
   $('#savedTxt').textContent = tt('saved');
+  if (iconSvg) {
+    document.querySelectorAll('span[data-icon]').forEach((slot) => {
+      if (!slot.childElementCount) slot.innerHTML = iconSvg(slot.dataset.icon, { size: slot.dataset.iconSize || 18 });
+    });
+  }
 }
 
 function renderRecap() {

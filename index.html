@@ -12,20 +12,39 @@
   <header>
     <span id="dateLine">—</span>
     <button class="badge badge-weekend" id="modeBadge">—</button>
-    <button id="journalBtn" title="总结手记" data-i18n-title="journalTitle">📖</button>
-    <button id="gearBtn" title="设置" data-i18n-title="settings">⚙️</button>
+    <button id="extBtn" title="更多功能" data-i18n-title="moreTitle" aria-label="更多功能" aria-expanded="false"><span data-icon="more"></span></button>
+    <button id="gearBtn" title="设置" data-i18n-title="settings" aria-label="设置"><span data-icon="settings"></span></button>
   </header>
+
+  <!-- 扩展功能面板：收纳与首屏无关的低频入口（悬浮/点击展开）。
+       新功能按同结构追加 .ext-item 磁贴即可，网格自动换行 -->
+  <div id="extBar">
+    <div class="ext-grid">
+      <button id="journalBtn" class="ext-item" title="总结手记" data-i18n-title="journalTitle">
+        <span class="ext-ico" data-icon="journal"></span>
+        <span class="ext-label" data-i18n="extLabelJournal">手记</span>
+      </button>
+      <button id="statsBtn" class="ext-item" title="统计" data-i18n-title="extLabelStats">
+        <span class="ext-ico" data-icon="stats"></span>
+        <span class="ext-label" data-i18n="extLabelStats">统计</span>
+      </button>
+      <button id="themeBtn" class="ext-item" title="切换面板主题（纸质 / 毛玻璃）" data-i18n-title="panelTheme" aria-pressed="false">
+        <span class="ext-ico" data-icon="time"></span>
+        <span class="ext-label" data-i18n="extLabelTheme">主题</span>
+      </button>
+    </div>
+  </div>
 
   <div id="modePopover">
     <div class="hint" data-i18n="modeQ">今天按哪种作息执行？</div>
-    <button data-mode="" data-i18n="autoMode">✓ 自动判定（推荐）</button>
+    <button data-mode=""><span class="mode-icon" data-icon="check"></span><span data-i18n="autoMode">自动判定（推荐）</span></button>
     <button data-mode="workday" data-i18n="workday">工作日</button>
     <button data-mode="weekend" data-i18n="weekend">周末</button>
     <button data-mode="holiday" data-i18n="holiday">节假日</button>
   </div>
 
   <section id="phaseCard" class="ph-study">
-    <div id="phaseLabel">📚 学习中</div>
+    <div id="phaseLabel"><span class="phase-icon" data-icon="study"></span><span class="phase-text">学习中</span></div>
     <div id="countdown">--:--</div>
     <div id="phaseRange">—</div>
     <div id="nextLine">—</div>
@@ -34,21 +53,21 @@
 
   <section id="quoteCard">
     <div id="quoteText">—</div>
-    <div id="quoteActions"><button id="requoteBtn" data-i18n="newQuote">换一句 ↻</button></div>
+    <div id="quoteActions"><button id="requoteBtn"><span data-icon="quote"></span><span data-i18n="newQuote">换一句</span></button></div>
   </section>
 
   <section id="timelineCard">
     <div class="cardTitle" data-i18n="todayTimeline">今日时间轴</div>
     <div id="timelineBars"></div>
     <div id="timelineLabels"></div>
+    <div id="timelineTooltip" class="tl-tooltip" role="tooltip" aria-hidden="true"></div>
   </section>
 
   <div id="statsRow">
     <span id="statsText">—</span>
     <span id="statsActions">
-      <button id="statsBtn" data-i18n="statsBtn">📊 统计</button>
-      <button id="extraBtn" data-i18n="extraBtn">➕ 加钟</button>
-      <button id="skipBtn" data-i18n="skip">跳过当前块 ⏭</button>
+      <button id="extraBtn"><span data-icon="add"></span><span data-i18n="extraBtn">加钟</span></button>
+      <button id="skipBtn"><span data-icon="skip"></span><span data-i18n="skip">跳过当前块</span></button>
     </span>
   </div>
 </div>
@@ -56,10 +75,10 @@
 <!-- 首次启用 -->
 <div id="enableOverlay" class="hidden">
   <div id="enableCard">
-    <div class="big">⏳</div>
+    <div class="big"><span data-icon="time"></span></div>
     <h2 data-i18n="welcomeTitle">欢迎使用学习计时</h2>
     <p data-i18n-html="welcomeD">按照你的作息自动提醒：什么时候专注学习、什么时候起身休息。<br>首先需要开启系统通知和提示音（只需一次）。</p>
-    <button id="enableBtn" data-i18n="enableBtn">🔔 启用系统提醒</button>
+    <button id="enableBtn"><span data-icon="notify"></span><span data-i18n="enableBtn">启用系统提醒</span></button>
     <button id="skipEnable" data-i18n="skipEnable">暂不启用，先看看界面</button>
   </div>
 </div>
@@ -69,7 +88,7 @@
   <div id="extraPanel">
     <div id="extraHead">
       <h2 data-i18n="extraTitle">临时加钟</h2>
-      <button id="closeExtra">✕</button>
+      <button id="closeExtra" aria-label="关闭"><span data-icon="close"></span></button>
     </div>
     <div id="extraBody">
       <div class="extraField"><label for="extraTitleInput" data-i18n="extraTitleLabel">标题</label><input id="extraTitleInput" maxlength="40" data-i18n-ph="extraTitlePh"></div>
@@ -98,7 +117,7 @@
   <div id="settingsPanel">
     <div id="settingsHead">
       <h2 data-i18n="settings">设置</h2>
-      <button id="closeSettings">✕</button>
+      <button id="closeSettings" aria-label="关闭"><span data-icon="close"></span></button>
     </div>
     <div id="settingsTabs">
       <button data-tab="schedule" class="active" data-i18n="tab_schedule">作息</button>
@@ -119,7 +138,7 @@
           </div>
           <div class="desc" id="schedTodayHint" style="margin:-6px 0 10px"></div>
           <div id="sessionList"></div>
-          <button id="addSessionBtn" data-i18n="addSession">＋ 添加时段</button>
+          <button id="addSessionBtn"><span data-icon="add"></span><span data-i18n="addSession">添加时段</span></button>
           <div id="schedError"></div>
           <div class="previewBox"><div class="pv-title" data-i18n="previewTitle">全天预览</div><div id="schedPreview"></div></div>
         </div>
@@ -157,7 +176,7 @@
             <div class="sw-label"><div class="t" data-i18n="volume">音量</div></div>
             <input type="range" id="volRange" min="0" max="100" value="70">
           </div>
-          <button class="ghostBtn" id="testNotifyBtn" data-i18n="testNotify">🔔 发送测试通知</button>
+          <button class="ghostBtn" id="testNotifyBtn"><span data-icon="notify"></span><span data-i18n="testNotify">发送测试通知</span></button>
         </div>
         <div class="field">
           <label data-i18n="notifCheck">通知诊断</label>
@@ -178,7 +197,7 @@
             <input type="text" id="quoteAddInput" placeholder="添加一条新句子…" data-i18n-ph="quotePh">
             <button class="primaryBtn" id="quoteAddBtn" data-i18n="add">添加</button>
           </div>
-          <button class="ghostBtn" id="quoteResetBtn" data-i18n="resetCat">↺ 恢复该类默认</button>
+          <button class="ghostBtn" id="quoteResetBtn"><span data-icon="reset"></span><span data-i18n="resetCat">恢复该类默认</span></button>
         </div>
       </div>
 
@@ -204,8 +223,8 @@
         <div class="field">
           <label data-i18n="backup">备份与迁移</label>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="ghostBtn" id="exportBtn" data-i18n="exportS">⬇ 导出设置</button>
-            <button class="ghostBtn" id="importBtn" data-i18n="importS">⬆ 导入设置</button>
+            <button class="ghostBtn" id="exportBtn"><span data-icon="export"></span><span data-i18n="exportS">导出设置</span></button>
+            <button class="ghostBtn" id="importBtn"><span data-icon="import"></span><span data-i18n="importS">导入设置</span></button>
             <input type="file" id="importFile" accept=".json" style="display:none">
           </div>
           <div class="desc" data-i18n="backupD">导出的 JSON 包含作息、节假日表、激励语与提醒设置，可导入到其他电脑。</div>
@@ -225,7 +244,7 @@
   <div id="statsPanel">
     <div id="statsHead">
       <h2 data-i18n="statsTitle">学习统计</h2>
-      <button id="closeStats">✕</button>
+      <button id="closeStats" aria-label="关闭"><span data-icon="close"></span></button>
     </div>
     <div id="statsSeg">
       <button data-range="today" class="active" data-i18n="stats_today">今日</button>
@@ -242,7 +261,7 @@
   <div id="journalPanel">
     <div id="journalHead">
       <h2 data-i18n="journalTitle">总结手记</h2>
-      <button id="closeJournal">✕</button>
+      <button id="closeJournal" aria-label="关闭"><span data-icon="close"></span></button>
     </div>
     <div id="journalBody"></div>
   </div>
@@ -253,7 +272,7 @@
   <div id="skipReasonPanel">
     <div id="skipReasonHead">
       <h2 data-i18n="skipReasonTitle">跳过当前块</h2>
-      <button id="closeSkipReason">✕</button>
+      <button id="closeSkipReason" aria-label="关闭"><span data-icon="close"></span></button>
     </div>
     <div id="skipReasonBody">
       <div id="skipReasonTarget">—</div>
@@ -275,13 +294,17 @@
 
 
 <script src="src/renderer/shared/namespace.js"></script>
+<script src="src/renderer/shared/icons.js"></script>
 <script src="src/renderer/shared/date-utils.js"></script>
 <script src="src/renderer/shared/dom-utils.js"></script>
 <script src="src/renderer/shared/state-schema.js"></script>
 <script src="src/renderer/shared/state-client.js"></script>
 <script src="src/renderer/shared/schedule-model.js"></script>
+<script src="src/renderer/shared/timeline-model.js"></script>
+<script src="src/renderer/shared/theme-model.js"></script>
 <script src="src/renderer/shared/stats-model.js"></script>
 <script src="src/renderer/shared/skip-model.js"></script>
+<script src="src/renderer/shared/quote-model.js"></script>
 <script src="src/renderer/home/00-content.js"></script>
 <script src="src/renderer/home/01-mode.js"></script>
 <script src="src/renderer/home/content/defaults.js"></script>

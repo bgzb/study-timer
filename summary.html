@@ -11,14 +11,14 @@
 <div class="wrap" id="wrap">
   <header>
     <div id="dateLine">—</div>
-    <h1 id="titleLine">✍ 今日复盘</h1>
+    <h1 id="titleLine"><span data-icon="journal"></span><span class="title-text">今日复盘</span></h1>
   </header>
 
   <div class="recap" id="recapCard"></div>
 
   <div class="skipCard" id="skipCard"></div>
 
-  <button id="editDayBtn" class="linkBtn">✏ 编辑时间块</button>
+  <button id="editDayBtn" class="linkBtn"><span data-icon="edit"></span><span class="button-text">编辑时间块</span></button>
 
   <section class="field">
     <label id="lbHeadline">一句话形容今天</label>
@@ -40,7 +40,7 @@
     <div id="tagRow"></div>
     <div class="tagAdd">
       <input id="tagInput" maxlength="12">
-      <button id="tagAddBtn">＋</button>
+      <button id="tagAddBtn" aria-label="添加标签"><span data-icon="add"></span></button>
     </div>
   </section>
 
@@ -66,11 +66,12 @@
 </div>
 
 <div id="savedMask">
-  <div class="big">✅</div>
+  <div class="big"><span data-icon="done"></span></div>
   <div class="txt" id="savedTxt">已保存</div>
 </div>
 
 <script src="src/renderer/shared/namespace.js"></script>
+<script src="src/renderer/shared/icons.js"></script>
 <script src="src/renderer/shared/date-utils.js"></script>
 <script src="src/renderer/shared/dom-utils.js"></script>
 <script src="src/renderer/shared/state-schema.js"></script>

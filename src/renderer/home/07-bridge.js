@@ -23,7 +23,7 @@ function updateTray(st) {
     title = '▸' + fmtClock(st.next.start);
     tip = t('waitTip')(st.next.name, fmtClock(st.next.start));
   } else {
-    title = '✓';
+    title = t('doneWord');
     tip = t('doneToday');
   }
   if (title !== lastTrayTitle) {

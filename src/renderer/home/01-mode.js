@@ -4,6 +4,19 @@
  * 未运行时临时接管），bar 面板始终纯展示，避免双份 */
 const BAR_MODE = new URLSearchParams(location.search).get('mode') === 'bar';
 const BAR_THEME_KEY = 'studyTimer.barTheme';
+const iconApi = window.StudyTimerIcons || {};
+const iconSvg = iconApi.iconSvg;
+const iconText = iconApi.iconText;
+function renderIconSlots(scope) {
+  if (!iconSvg) return;
+  (scope || document).querySelectorAll('span[data-icon]').forEach((slot) => {
+    if (slot.childElementCount) return;
+    slot.innerHTML = iconSvg(slot.dataset.icon, { size: slot.dataset.iconSize || 18 });
+  });
+}
+function setIconLabel(el, name, text) {
+  if (el && iconText) el.innerHTML = iconText(name, text);
+}
 
 // 跨 App 共享状态：Electron 下走主进程的共享 JSON 文件（两个 App 经它同步），
 // 浏览器模式回落 localStorage
@@ -53,6 +66,7 @@ function applyI18n() {
   document.title = t('appName');
   const seg = $('#langSeg');
   if (seg) seg.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.lang === (state.language === 'en' ? 'en' : 'zh')));
+  renderIconSlots(document);
 }
 
 const QUOTE_CATEGORIES = [

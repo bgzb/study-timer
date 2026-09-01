@@ -18,6 +18,7 @@ function closeSettingsPanel() {
 // 其余窗口改了状态 → 重读 localStorage 并刷新本地视图
 function applyStateSync() {
   state = loadState();
+  syncPanelTheme();
   applyI18n();
   rebuildDay();
   tick();
@@ -31,42 +32,43 @@ if (bridge && bridge.onStateSync) bridge.onStateSync(() => applyStateSync());
 // 否则本页 60s 兜底落盘会用内存旧数据覆盖掉刚保存的编辑
 if (!bridge) window.addEventListener('storage', (e) => { if (e.key === STORE_KEY) applyStateSync(); });
 
-function applyBarTheme(theme) {
-  const glass = theme === 'glass';
-  document.body.classList.toggle('glass', glass);
-  barTheme = glass ? 'glass' : 'paper';
-  if (bridge && bridge.saveAll) bridge.saveAll({ state, barTheme });
-  if (bridge && bridge.setBarVibrancy) bridge.setBarVibrancy(glass);
+function applyBarTheme(theme, persist) {
+  barTheme = StudyTimerShared.normalizePanelTheme(theme);
+  const glass = barTheme === 'glass';
+  if (BAR_MODE) {
+    document.body.classList.toggle('glass', glass);
+    if (bridge && bridge.setBarVibrancy) bridge.setBarVibrancy(glass);
+  }
+  const themeBtn = $('#themeBtn');
+  if (themeBtn) themeBtn.setAttribute('aria-pressed', String(glass));
+  if (persist) saveState();
 }
+
+function syncPanelTheme() {
+  const all = readAll();
+  let stored = all && all.barTheme;
+  if (!all) {
+    try { stored = localStorage.getItem(BAR_THEME_KEY); } catch (e) {}
+  }
+  applyBarTheme(stored || barTheme, false);
+}
+
+const themeBtn = $('#themeBtn');
+if (themeBtn) {
+  themeBtn.addEventListener('click', () => {
+    applyBarTheme(StudyTimerShared.nextPanelTheme(barTheme), true);
+  });
+}
+syncPanelTheme();
 
 if (BAR_MODE) {
   // 初始 vibrancy 与已存皮肤一致
   if (bridge && bridge.setBarVibrancy) bridge.setBarVibrancy(document.body.classList.contains('glass'));
 
-  // 头部：主题切换按钮（纸质 ↔ 毛玻璃）
-  const themeBtn = document.createElement('button');
-  themeBtn.id = 'themeBtn';
-  themeBtn.textContent = '◧';
-  themeBtn.setAttribute('data-i18n-title', 'panelTheme');
-  themeBtn.addEventListener('click', () => {
-    applyBarTheme(document.body.classList.contains('glass') ? 'paper' : 'glass');
-  });
-  document.querySelector('header').insertBefore(themeBtn, $('#gearBtn'));
-
-  // 底部：打开主窗口
-  const barFooter = document.createElement('div');
-  barFooter.id = 'barFooter';
-  const openFullBtn = document.createElement('button');
-  openFullBtn.setAttribute('data-i18n', 'openFull');
-  openFullBtn.addEventListener('click', () => {
-    if (bridge) { bridge.launchDesktop(); bridge.hideBar(); }
-  });
-  barFooter.appendChild(openFullBtn);
-  $('#app').appendChild(barFooter);
-
-  // Escape：先收跳过理由/统计/设置弹层，再收面板
+  // Escape：先收扩展面板/跳过理由/统计/设置弹层，再收面板
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (typeof closeExtBar === 'function' && closeExtBar()) return;
     if (skipReasonOverlay.classList.contains('open')) { closeSkipReason(); return; }
     if (extraOverlay.classList.contains('open')) { closeExtra(); return; }
     if (statsOverlay.classList.contains('open')) { closeStatsPanel(); return; }

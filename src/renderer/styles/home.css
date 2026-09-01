@@ -37,6 +37,9 @@
     }
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  .ui-icon { width: 1em; height: 1em; display: inline-block; flex: 0 0 auto; vertical-align: -0.14em; }
+  .icon-label { display: inline-block; }
+  button > .ui-icon + .icon-label, button > .icon-label + .ui-icon { margin-left: 6px; }
   /* 隐藏滚动条：滚动仍可用（触控板/滚轮），只是不再显示进度条 */
   ::-webkit-scrollbar { width: 0; height: 0; }
   html, body { height: 100%; }
@@ -76,22 +79,22 @@
   .badge-holiday { background: var(--study-bg); color: var(--study); }
   .badge.manual::after { content: " ✎"; opacity: 0.7; }
   #gearBtn {
-    margin-left: auto; border: none; background: var(--card); color: var(--text2);
+    border: none; background: var(--card); color: var(--text2);
     width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 17px;
     box-shadow: var(--shadow); transition: transform 0.15s;
   }
   #gearBtn:hover { transform: rotate(30deg); color: var(--text); }
-  #journalBtn {
+  /* extBtn 的 margin-left:auto 把自己推到最右，gearBtn 紧随其后 */
+  #extBtn {
     margin-left: auto; border: none; background: var(--card); color: var(--text2);
-    width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 16px;
-    box-shadow: var(--shadow); transition: transform 0.15s; position: relative;
+    width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 15px;
+    box-shadow: var(--shadow); transition: transform 0.15s, color 0.15s;
   }
-  #journalBtn:hover { transform: translateY(-1px); color: var(--text); }
-  /* gearBtn 有 margin-left:auto 会把 journalBtn 推到最右；让 journalBtn 自动、gearBtn 跟随 */
-  #journalBtn + #gearBtn { margin-left: 0; }
-  /* 当天已结束但总结未填写时的小圆点提醒 */
+  #extBtn:hover { transform: translateY(-1px); color: var(--text); }
+  #extBtn + #gearBtn { margin-left: 0; }
+  /* 当天已结束但总结未填写时的小圆点提醒（磁贴右上角） */
   #journalBtn.pending::after {
-    content: ''; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px;
+    content: ''; position: absolute; top: 6px; right: 8px; width: 8px; height: 8px;
     border-radius: 50%; background: var(--study); border: 2px solid var(--card);
   }
 
@@ -108,6 +111,30 @@
   }
   #modePopover button:hover { background: var(--card2); }
   #modePopover .hint { font-size: 11px; color: var(--text2); padding: 4px 12px 6px; }
+
+  /* 扩展功能面板（⌗）：悬浮/点击展开的磁贴网格，新增功能追加磁贴即自动换行 */
+  #extBar {
+    position: absolute; z-index: 60; background: var(--card); border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18); border: 1px solid var(--line);
+    top: 56px; right: 16px; display: none;
+  }
+  #extBar.open { display: block; animation: extBarIn 0.16s ease-out; }
+  @keyframes extBarIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: none; }
+  }
+  .ext-grid { display: grid; grid-template-columns: repeat(3, minmax(68px, 1fr)); gap: 4px; padding: 8px; }
+  .ext-item {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 10px 8px 8px; border: none; background: none; color: var(--text2);
+    font-family: inherit; border-radius: 11px; cursor: pointer; position: relative;
+    transition: background 0.15s, color 0.15s;
+  }
+  .ext-item:hover { background: var(--card2); color: var(--text); }
+  .ext-item[aria-pressed="true"] { background: var(--study-bg); color: var(--study); }
+  .ext-item:active { transform: scale(0.95); }
+  .ext-ico { font-size: 22px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+  .ext-label { font-size: 11.5px; white-space: nowrap; }
 
   /* ===== 状态卡 ===== */
   #phaseCard {
@@ -154,6 +181,7 @@
   }
   #quoteActions { text-align: center; margin-top: 6px; }
   #quoteActions button {
+    display: inline-flex; align-items: center; gap: 6px;
     border: none; background: none; color: var(--text2); font-family: inherit;
     font-size: 12px; cursor: pointer; padding: 4px 10px; border-radius: 8px;
   }
@@ -164,6 +192,8 @@
   .cardTitle { font-size: 12px; font-weight: 600; color: var(--text2); letter-spacing: 0.08em; margin-bottom: 10px; }
   #timelineBars { display: flex; gap: 2px; height: 16px; border-radius: 5px; overflow: hidden; }
   .tl-seg { position: relative; border-radius: 2px; min-width: 2px; }
+  .tl-seg[tabindex] { outline: none; cursor: help; }
+  .tl-seg[tabindex]:focus-visible { box-shadow: inset 0 0 0 2px var(--text); }
   .tl-study { background: var(--study); opacity: 0.35; }
   .tl-break { background: var(--break); opacity: 0.3; }
   .tl-gap { background: var(--line); }
@@ -171,22 +201,44 @@
   .tl-past.tl-break { opacity: 0.55; }
   .tl-current { opacity: 1; }
   .tl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: rgba(255,255,255,0.42); border-radius: 2px; }
-  #timelineLabels { position: relative; height: 18px; margin-top: 5px; }
-  .tl-label { position: absolute; top: 0; font-size: 10.5px; color: var(--text2); transform: translateX(-50%); white-space: nowrap; }
-  .tl-label.end { transform: none; }
+  #timelineLabels { position: relative; height: 12px; margin-top: 5px; }
+  .tl-marker {
+    position: absolute; top: 3px; width: 6px; height: 6px; border-radius: 50%;
+    transform: translateX(-50%); background: var(--study); border: 1px solid var(--card);
+    box-sizing: border-box; cursor: help; outline: none; z-index: 1;
+  }
+  .tl-marker:hover, .tl-marker:focus-visible { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--study); }
+  .tl-marker-extra { border-radius: 1px; background: var(--break); transform: translateX(-50%) rotate(45deg); }
+  .tl-marker-extra:hover, .tl-marker-extra:focus-visible { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--break); }
+  .tl-marker-end { left: auto !important; right: 0; transform: none; background: var(--text2); cursor: help; }
+  .tl-marker-end:hover, .tl-marker-end:focus-visible { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--text2); }
+  .tl-tooltip {
+    position: fixed; z-index: 120; max-width: min(280px, calc(100vw - 16px));
+    padding: 7px 10px; border-radius: 8px; background: var(--text); color: var(--card);
+    box-shadow: 0 5px 18px rgba(0,0,0,0.22); font-size: 11.5px; line-height: 1.4;
+    white-space: normal; overflow-wrap: anywhere; pointer-events: none;
+    opacity: 0; visibility: hidden; transform: translateY(3px);
+    transition: opacity 0.1s ease, transform 0.1s ease, visibility 0.1s;
+  }
+  .tl-tooltip.show { opacity: 1; visibility: visible; transform: none; }
 
   /* ===== 底部统计 ===== */
-  #statsRow { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
-  #statsActions { display: flex; gap: 8px; }
-  #statsText { font-size: 13px; color: var(--text2); }
+  /* flex-wrap：按钮放不下时整体折行（文案一行 + 按钮一行），后续新增按钮同样流式扩展 */
+  #statsRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px; }
+  #statsActions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  #statsText { font-size: 13.5px; color: var(--text2); white-space: nowrap; }
   #statsText b { color: var(--text); font-weight: 600; }
+  /* nowrap + 禁止收缩：窄窗口下按钮文字绝不竖排换行 */
   #skipBtn, #extraBtn {
+    display: inline-flex; align-items: center; gap: 6px;
     border: 1px solid var(--line); background: var(--card); color: var(--text2);
-    font-family: inherit; font-size: 12.5px; padding: 7px 14px; border-radius: 10px; cursor: pointer;
-    transition: all 0.15s;
+    font-family: inherit; font-size: 13px; padding: 8px 14px; border-radius: 11px; cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+    transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.15s;
   }
-  #skipBtn:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
-  #extraBtn:hover { border-color: var(--study); color: var(--study); }
+  #skipBtn:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); transform: translateY(-1px); }
+  #extraBtn:hover { border-color: var(--study); color: var(--study); transform: translateY(-1px); }
+  #skipBtn:active:not(:disabled), #extraBtn:active { transform: scale(0.96); }
   #skipBtn:disabled { opacity: 0.4; cursor: default; }
 
   /* ===== 首次启用遮罩 ===== */
@@ -200,7 +252,9 @@
     background: var(--card); border-radius: 22px; padding: 32px 30px; width: min(360px, 100%);
     text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   }
-  #enableCard .big { font-size: 40px; margin-bottom: 10px; }
+  #enableCard .big { font-size: 40px; margin-bottom: 10px; color: var(--study); }
+  #enableCard .big .ui-icon { width: 1em; height: 1em; }
+  #enableBtn, #addSessionBtn, .ghostBtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
   #enableCard h2 { font-size: 18px; margin-bottom: 10px; }
   #enableCard p { font-size: 13.5px; color: var(--text2); line-height: 1.7; margin-bottom: 20px; }
   #enableBtn {
@@ -268,6 +322,7 @@
   .session-row .s-time { width: 88px; }
   .session-row .s-seq { flex: 1; min-width: 90px; }
   .session-row .s-del {
+    display: inline-flex; align-items: center; justify-content: center;
     border: none; background: none; color: var(--text2); cursor: pointer; font-size: 15px;
     width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
   }
@@ -349,6 +404,7 @@
   }
   .soundCard .sc-name { font-size: 14px; font-weight: 600; }
   .soundCard .sc-play {
+    display: inline-flex; align-items: center; justify-content: center;
     border: none; background: var(--card2); color: var(--text2); width: 28px; height: 28px;
     border-radius: 50%; cursor: pointer; font-size: 12px;
   }
@@ -373,19 +429,7 @@
   .subsectionTitle:first-child { margin-top: 0; }
 
   /* ===== 菜单栏面板模式（body.bar）===== */
-  #themeBtn {
-    border: none; background: var(--card); color: var(--text2);
-    width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 16px;
-    box-shadow: var(--shadow); transition: color 0.15s;
-  }
-  #themeBtn:hover { color: var(--text); }
-  #barFooter { display: flex; justify-content: center; }
-  #barFooter button {
-    border: 1px solid var(--line); background: var(--card); color: var(--text2);
-    font-family: inherit; font-size: 12px; padding: 7px 16px; border-radius: 10px;
-    cursor: pointer; box-shadow: var(--shadow); transition: all 0.15s;
-  }
-  #barFooter button:hover { color: var(--study); border-color: var(--study); }
+  /* 主题切换磁贴已并入扩展面板（.ext-item），此处不再有独立头部按钮与底部 footer */
 
   /* ===== 学习统计面板 ===== */
   #statsOverlay {
@@ -460,6 +504,7 @@
   .stLog { margin-top: 4px; }
   .stLogTitle { font-size: 12px; font-weight: 600; color: var(--text2); letter-spacing: 0.08em; margin: 14px 0 8px; display: flex; align-items: center; }
   .stLogTitle button {
+    display: inline-flex; align-items: center; gap: 5px;
     margin-left: auto; border: 1px solid var(--line); background: var(--card); color: var(--text2);
     font-family: inherit; font-size: 11px; padding: 3px 10px; border-radius: 999px; cursor: pointer;
     letter-spacing: normal; transition: all 0.15s;
@@ -475,13 +520,6 @@
   .stLogItem .sk.nf { color: var(--wait); border-color: var(--wait); }
   .stLogItem .m { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
   .stEmpty { color: var(--text2); font-size: 13px; text-align: center; padding: 26px 0 14px; }
-
-  #statsBtn {
-    border: 1px solid var(--line); background: var(--card); color: var(--text2);
-    font-family: inherit; font-size: 12.5px; padding: 7px 14px; border-radius: 10px; cursor: pointer;
-    transition: all 0.15s;
-  }
-  #statsBtn:hover { border-color: var(--study); color: var(--study); }
 
   /* ===== 总结手记面板 ===== */
   #journalOverlay {
@@ -511,6 +549,7 @@
     border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px;
   }
   .jTodayCard button {
+    display: inline-flex; align-items: center; gap: 5px;
     margin-left: auto; border: none; background: var(--study); color: #fff; font-family: inherit;
     font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer; flex-shrink: 0;
   }
@@ -519,10 +558,11 @@
     border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s;
   }
   .jRow:hover { background: var(--study-bg); }
-  .jRow .jEmoji { font-size: 20px; flex-shrink: 0; width: 26px; text-align: center; }
+  .jRow .jEmoji { font-size: 20px; flex-shrink: 0; width: 26px; text-align: center; display: inline-flex; align-items: center; justify-content: center; }
   .jRow .jMain { flex: 1; min-width: 0; }
   .jRow .jDate { font-size: 13px; font-weight: 600; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .jRow .jDate .stars { color: var(--study); font-size: 11px; letter-spacing: 1px; }
+  .jRow .jDate .stars { color: var(--study); font-size: 11px; letter-spacing: 1px; display: inline-flex; gap: 1px; }
+  .stars .ui-icon { fill: currentColor; }
   .jRow .jHead { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .jRow .jMin { font-size: 11px; color: var(--text2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
   .jTags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
@@ -530,14 +570,15 @@
   .jEmpty { color: var(--text2); font-size: 13px; text-align: center; padding: 26px 0 14px; }
 
   .jBackBtn {
+    display: inline-flex; align-items: center; gap: 5px;
     border: none; background: var(--card2); color: var(--text2); font-family: inherit; font-size: 12.5px;
     padding: 6px 12px; border-radius: 9px; cursor: pointer; margin-bottom: 12px;
   }
   .jBackBtn:hover { color: var(--study); }
   .jDetailHead { text-align: center; margin: 2px 0 6px; }
-  .jDetailHead .jEmojiBig { font-size: 30px; }
+  .jDetailHead .jEmojiBig { font-size: 30px; color: var(--study); }
   .jDetailHead .jd { font-size: 16px; font-weight: 700; margin-top: 2px; }
-  .jDetailHead .stars { color: var(--study); font-size: 14px; letter-spacing: 2px; margin-top: 3px; }
+  .jDetailHead .stars { color: var(--study); font-size: 14px; letter-spacing: 2px; margin-top: 3px; display: inline-flex; gap: 2px; }
   .jHeadline {
     background: var(--study-bg); border-radius: 12px; padding: 12px 16px; font-size: 14px;
     font-weight: 600; text-align: center; margin: 10px 0;
@@ -548,6 +589,7 @@
   .jFoot { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
   .jFoot .time { font-size: 11px; color: var(--text2); }
   .jFoot .jEditBtn {
+    display: inline-flex; align-items: center; gap: 5px;
     margin-left: auto; border: 1px solid var(--study); background: none; color: var(--study);
     font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 16px; border-radius: 10px; cursor: pointer;
   }
@@ -673,9 +715,12 @@
   body.bar { overflow: hidden; }
   /* 高度固定后内容比窗口略矮：纵向撑满并均匀分布，底部按钮贴底不留空白 */
   body.bar #app { max-width: 388px; min-height: 100%; justify-content: space-between; padding: 18px 18px 14px; gap: 12px; }
-  body.bar #dateLine { font-size: 14px; }
+  body.bar #dateLine { font-size: 15px; }
   body.bar .badge { font-size: 11.5px; padding: 3px 10px; }
-  body.bar #gearBtn, body.bar #themeBtn, body.bar #journalBtn { width: 30px; height: 30px; font-size: 14px; border-radius: 9px; }
+  body.bar #gearBtn, body.bar #extBtn { width: 30px; height: 30px; font-size: 14px; border-radius: 9px; }
+  body.bar #extBar { top: 52px; right: 14px; }
+  body.bar .ext-ico { font-size: 20px; }
+  body.bar .ext-label { font-size: 11px; }
   body.bar #phaseCard { padding: 20px 18px 17px; border-radius: 15px; }
   body.bar #phaseLabel { font-size: 13px; gap: 5px; }
   body.bar #countdown { font-size: 48px; margin: 4px 0 2px; }
@@ -693,17 +738,14 @@
   body.bar #timelineCard { padding: 13px 16px 11px; border-radius: 15px; }
   body.bar .cardTitle { margin-bottom: 7px; }
   body.bar #timelineBars { height: 13px; }
-  body.bar #timelineLabels { height: 16px; margin-top: 4px; }
-  body.bar .tl-label { font-size: 9.5px; }
-  /* 紧凑宽度下最后的时段标签可能与"结束"标签相遇：给结束标签垫卡片色底并向左延伸，保证可读 */
-  body.bar .tl-label.end {
-    background: var(--card); padding-left: 8px;
-    box-shadow: -10px 0 0 var(--card);
-  }
+  body.bar #timelineLabels { height: 10px; margin-top: 4px; }
+  body.bar .tl-marker { top: 2px; width: 5px; height: 5px; }
   body.bar #statsRow { padding: 0 2px; }
-  body.bar #statsText { font-size: 12.5px; }
-  body.bar #skipBtn, body.bar #extraBtn, body.bar #statsBtn { font-size: 11.5px; padding: 7px 10px; border-radius: 9px; }
-  body.bar #statsActions { gap: 5px; }
+  /* 窄幅下一行放不下文案+按钮：改为文案一行、按钮一行，按钮行留横向扩展空间 */
+  body.bar #statsRow { flex-direction: column; align-items: stretch; }
+  body.bar #statsText { font-size: 14px; }
+  body.bar #skipBtn, body.bar #extraBtn { font-size: 13px; padding: 8px 12px; border-radius: 10px; }
+  body.bar #statsActions { gap: 6px; justify-content: flex-start; }
   body.bar #extraOverlay { padding: 10px; }
   body.bar #extraPanel { width: 100%; border-radius: 14px; }
   body.bar #statsOverlay { padding: 10px; }
@@ -729,4 +771,3 @@
       --line: rgba(255, 255, 255, 0.1);
     }
   }
-
