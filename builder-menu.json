@@ -19,6 +19,7 @@
   "mac": {
     "category": "public.app-category.productivity",
     "icon": "assets/icon.png",
+    "identity": "Study Timer Local Dev",
     "extendInfo": {
       "LSUIElement": true
     },

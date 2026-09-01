@@ -400,8 +400,55 @@ ipcMain.on('sysprefs:notifications', () => {
 ipcMain.on('notify', (_e, p) => {
   if (p) showNotification(p.title, p.body, p.sound);
 });
+// 测试通知用：等待真实投递结果 'shown'（原生横幅）/ 'fallback'（被拦，走了 osascript）/ 'blocked'（全被拦）
+ipcMain.handle('notify:check', (_e, p) => {
+  if (!p) return 'blocked';
+  return new Promise((resolve) => {
+    let settled = false;
+    const fin = (r) => { if (!settled) { settled = true; resolve(r); } };
+    showNotification(p.title, p.body, p.sound, fin);
+    setTimeout(() => fin('blocked'), 8000);
+  });
+});
 
-function showNotification(title, body, sound) {
+// 通知链路日志：历史上多次静默失败，落盘便于回查（封顶 200 行）
+function notifLog(msg) {
+  const line = new Date().toISOString() + ' ' + msg;
+  console.log('[notif]', msg);
+  try {
+    const file = path.join(app.getPath('userData'), 'notif-debug.log');
+    let lines = [];
+    try { lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean); } catch (e) {}
+    lines.push(line);
+    while (lines.length > 200) lines.shift();
+    fs.writeFileSync(file, lines.join('\n') + '\n');
+  } catch (e) {}
+}
+
+// osascript 兜底：原生通道被系统丢弃时仍能弹横幅（通知归到本 App 名下），并自带提示音
+function osascriptNotify(title, body, sound, cb) {
+  try {
+    const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const snd = sound ? ` sound name "${esc(sound)}"` : ' sound name "Glass"';
+    const p = spawn('osascript', ['-e', `display notification "${esc(body)}" with title "${esc(title)}"${snd}`], { stdio: 'ignore' });
+    p.on('error', (e) => { notifLog('osascript spawn error: ' + (e && e.message)); try { if (cb) cb(false); } catch (e2) {} });
+    p.on('close', (code) => { notifLog('osascript exit=' + code); try { if (cb) cb(code === 0); } catch (e2) {} });
+  } catch (e) {
+    notifLog('osascript error: ' + (e && e.message));
+    try { if (cb) cb(false); } catch (e2) {}
+  }
+}
+
+function showNotification(title, body, sound, cb) {
+  let settled = false;
+  const done = (r) => {
+    if (settled) return;
+    settled = true;
+    try { if (cb) cb(r); } catch (e) {}
+  };
+  notifLog('send: ' + title);
+  // 原生通道被系统静默丢弃时（未授权/签名身份变化）不抛异常，只是横幅不出现，
+  // 因此靠 'show' 事件确认投递，超时未确认即降级 osascript
   try {
     if (Notification.isSupported()) {
       const opts = { title: String(title || ''), body: String(body || ''), silent: !sound };
@@ -409,20 +456,25 @@ function showNotification(title, body, sound) {
       const n = new Notification(opts);
       // 桌面端：点通知开主窗口；菜单栏端：点通知弹面板（无 Dock 图标，不开窗口）
       n.on('click', () => (MENU_APP ? toggleBarWindow() : showWin()));
+      n.on('show', () => { notifLog('native shown'); done('shown'); });
       n.show();
+      setTimeout(() => {
+        if (settled) return;
+        notifLog('native banner not confirmed, falling back to osascript');
+        osascriptNotify(title, body, sound, (ok) => done(ok ? 'fallback' : 'blocked'));
+      }, 1500);
       return;
     }
-  } catch (e) {}
-  try {
-    const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    const snd = sound ? ` sound name "${esc(sound)}"` : ' sound name "Glass"';
-    spawn('osascript', ['-e', `display notification "${esc(body)}" with title "${esc(title)}"${snd}`], { stdio: 'ignore' }).on('error', () => {});
-  } catch (e) {}
+  } catch (e) {
+    notifLog('native error: ' + (e && e.message));
+  }
+  osascriptNotify(title, body, sound, (ok) => done(ok ? 'fallback' : 'blocked'));
 }
 
 // 首次启动主动发一条注册通知：让应用出现在 系统设置→通知 列表里并触发授权弹窗（只做一次）
+// v2：签名身份修复后换名重跑一次，让系统按新身份重新登记授权
 function registerNotificationsOnce() {
-  const flag = path.join(app.getPath('userData'), 'notif-registered');
+  const flag = path.join(app.getPath('userData'), 'notif-registered-v2');
   try {
     if (fs.existsSync(flag)) return;
     fs.writeFileSync(flag, '1');

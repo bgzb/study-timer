@@ -253,6 +253,19 @@ $('#volRange').addEventListener('input', (e) => {
 $('#volRange').addEventListener('change', () => playSound());
 $('#testNotifyBtn').addEventListener('click', () => {
   const bannerWillSound = !!(bridge && state.notifications);
+  // App 内：等主进程的真实投递结果再反馈，不再静默（shown=原生横幅；fallback=被拦走了脚本兜底；blocked=全被拦）
+  if (bridge && bridge.notifyCheck && state.notifications) {
+    const btn = $('#testNotifyBtn');
+    btn.disabled = true;
+    bridge.notifyCheck(t('appName'), t('testNotifyBody')).then((r) => {
+      btn.disabled = false;
+      const msg = r === 'shown' ? t('testNotifyOk')
+        : r === 'fallback' ? t('testNotifyFallback')
+        : t('testNotifyBlocked');
+      $('#permStatus').textContent = t('notifStatusPrefix') + msg;
+    });
+    return;
+  }
   notify(t('appName'), t('testNotifyBody'));
   // 横幅会自带系统提示音；无横幅场景本地补一声
   if (!bannerWillSound) playSound();
