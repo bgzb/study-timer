@@ -12,28 +12,7 @@
   <header>
     <span id="dateLine">—</span>
     <button class="badge badge-weekend" id="modeBadge">—</button>
-    <button id="extBtn" title="更多功能" data-i18n-title="moreTitle" aria-label="更多功能" aria-expanded="false"><span data-icon="more"></span></button>
-    <button id="gearBtn" title="设置" data-i18n-title="settings" aria-label="设置"><span data-icon="settings"></span></button>
   </header>
-
-  <!-- 扩展功能面板：收纳与首屏无关的低频入口（悬浮/点击展开）。
-       新功能按同结构追加 .ext-item 磁贴即可，网格自动换行 -->
-  <div id="extBar">
-    <div class="ext-grid">
-      <button id="journalBtn" class="ext-item" title="总结手记" data-i18n-title="journalTitle">
-        <span class="ext-ico" data-icon="journal"></span>
-        <span class="ext-label" data-i18n="extLabelJournal">手记</span>
-      </button>
-      <button id="statsBtn" class="ext-item" title="统计" data-i18n-title="extLabelStats">
-        <span class="ext-ico" data-icon="stats"></span>
-        <span class="ext-label" data-i18n="extLabelStats">统计</span>
-      </button>
-      <button id="themeBtn" class="ext-item" title="切换面板主题（纸质 / 毛玻璃）" data-i18n-title="panelTheme" aria-pressed="false">
-        <span class="ext-ico" data-icon="time"></span>
-        <span class="ext-label" data-i18n="extLabelTheme">主题</span>
-      </button>
-    </div>
-  </div>
 
   <div id="modePopover">
     <div class="hint" data-i18n="modeQ">今天按哪种作息执行？</div>
@@ -71,6 +50,13 @@
     </span>
   </div>
 </div>
+
+<!-- 侧边工具抽屉：贴右缘常驻图标轨（点图标直达功能），展开成带文字的竖向工具栏。
+     条目由 shared/tool-registry.js 注册表驱动，17-tool-drawer.js 渲染与交互 -->
+<aside id="toolDrawer" data-i18n-aria="drawerLabel">
+  <button id="drawerToggle" aria-expanded="false" data-i18n-title="drawerExpand" data-i18n-aria="drawerExpand"><span class="td-ico" data-icon="chevrons"></span></button>
+  <nav id="drawerScroll"></nav>
+</aside>
 
 <!-- 首次启用 -->
 <div id="enableOverlay" class="hidden">
@@ -147,7 +133,11 @@
       <div class="tab-section" id="tab-holidays">
         <div class="field">
           <label data-i18n="holTitle">节假日与调休补班</label>
-          <div class="desc" data-i18n="holDesc">已内置 2025–2026 年国务院法定节假日与调休安排。命中节假日按"节假日"作息，补班日按"工作日"作息，周六日按"周末"作息。可自行增删。</div>
+          <div class="desc" data-i18n="holDesc">法定节假日与调休安排自动从网络同步（数据来自国务院公告，每天检查一次；网络不可用时保留现有数据）。命中节假日按"节假日"作息，补班日按"工作日"作息，周六日按"周末"作息。可自行增删自定义日期。</div>
+          <div class="hol-sync-row">
+            <span id="holSyncStatus"></span>
+            <button class="ghostBtn" id="holSyncBtn" data-i18n="holSyncBtn">立即更新</button>
+          </div>
           <div class="inline-form">
             <input type="text" id="holDate" placeholder="如 2026-10-01" style="width:136px" autocomplete="off" data-i18n-ph="ph_date">
             <input type="text" id="holName" placeholder="名称，如 国庆节" style="width:150px" autocomplete="off" data-i18n-ph="ph_holName">
@@ -299,12 +289,14 @@
 <script src="src/renderer/shared/dom-utils.js"></script>
 <script src="src/renderer/shared/state-schema.js"></script>
 <script src="src/renderer/shared/state-client.js"></script>
+<script src="src/renderer/shared/holiday-model.js"></script>
 <script src="src/renderer/shared/schedule-model.js"></script>
 <script src="src/renderer/shared/timeline-model.js"></script>
 <script src="src/renderer/shared/theme-model.js"></script>
 <script src="src/renderer/shared/stats-model.js"></script>
 <script src="src/renderer/shared/skip-model.js"></script>
 <script src="src/renderer/shared/quote-model.js"></script>
+<script src="src/renderer/shared/tool-registry.js"></script>
 <script src="src/renderer/home/00-content.js"></script>
 <script src="src/renderer/home/01-mode.js"></script>
 <script src="src/renderer/home/content/defaults.js"></script>
@@ -324,6 +316,8 @@
 <script src="src/renderer/home/14-journal.js"></script>
 <script src="src/renderer/home/15-onboarding.js"></script>
 <script src="src/renderer/home/16-bootstrap.js"></script>
+<script src="src/renderer/home/17-tool-drawer.js"></script>
+<script src="src/renderer/home/18-holiday-sync.js"></script>
 
 </body>
 </html>

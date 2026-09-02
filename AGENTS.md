@@ -1,21 +1,21 @@
 # study-timer 项目约束
 
-## 功能修改后自动重新打包安装并验证菜单栏端
+## 功能修改后在浏览器测试，并自动重新打包安装菜单栏端
 
 用户日常运行的是 **安装版** `/Applications/study-timer.app`，它加载的是打包时封入的代码，
 直接修改本目录源码（`index.html` / `main.js` / `preload.js` / `assets/`）对正在运行的应用**不生效**。
 
 因此约定：
 
-- 每当对功能代码做了修改（修复 bug、新增功能等），都要**自动执行**完整的重新打包、覆盖安装和启动验证流程，
-  不需要先询问用户确认。
-- 日常修改只重新打包、覆盖安装和验证**菜单栏端**，使用以下流程：
+- 每当对功能代码做了修改（修复 bug、新增功能等），功能验证**在浏览器里完成即可**（打开渲染页面做交互检查），
+  **不需要在打包安装后再测试；打包安装后的检查与测试由用户自己负责**。
+- 重新打包安装仍**自动执行**，不需要先询问用户确认；日常修改只重新打包、覆盖安装**菜单栏端**，使用以下流程：
   1. 退出正在运行的 `study-timer-menu` 进程（不要求退出或更新桌面端）。
   2. `npm run dist:menu`（产出 `dist/menu/mac-arm64/study-timer-menu.app`）。
   3. `rm -rf /Applications/study-timer-menu.app && ditto dist/menu/mac-arm64/study-timer-menu.app /Applications/study-timer-menu.app`
-  4. `open /Applications/study-timer-menu.app`，等待菜单栏端启动，并确认 `study-timer-menu` 进程正常运行。
-     菜单栏端启动检查到进程正常运行即可，不需要检查或处理 Ice 的 Visible、Hidden、Always Hidden 分区，
-     也不需要确认图标是否实际可见。
+  4. `open /Applications/study-timer-menu.app` 把菜单栏端重新拉起即可，**不需要**确认进程是否正常运行，
+     不需要检查或处理 Ice 的 Visible、Hidden、Always Hidden 分区，也不需要确认图标是否实际可见——
+     安装后的一切验证一律交给用户。
 - 桌面端 `/Applications/study-timer.app` 在上述日常流程中**不重新打包、不覆盖安装、不启动**，继续保留当前已安装版本；平时即使菜单栏端已完成多次功能修改，也不要因此同步更新桌面端。只有在积累了较多功能、准备进行一次版本迭代/统一发布时，才执行一次桌面端同步更新：退出桌面端进程，运行 `npm run dist`，再将 `dist/mac-arm64/study-timer.app` 覆盖安装到 `/Applications/study-timer.app`。如确需执行数据迁移或桌面端专项验证，也可提前启动它。
 - 仅修改文档、注释、测试用临时文件等不影响应用运行内容的改动，无需询问。
 

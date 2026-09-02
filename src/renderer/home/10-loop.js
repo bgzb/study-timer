@@ -206,8 +206,9 @@ function renderStats() {
   $('#statsText').innerHTML = t('stats')(stats.done, stats.total, stats.focusMin);
   const st = currentState(day);
   $('#skipBtn').disabled = !(st.phase === 'study' || st.phase === 'break');
-  // 当天已结束但总结未填写（也未跳过）时，📖 按钮挂小圆点提醒
-  $('#journalBtn').classList.toggle(
+  // 当天已结束但总结未填写（也未跳过）时，抽屉里的手记图标挂小圆点提醒
+  const journalItem = $('#toolDrawer .td-item[data-tool="journal"]');
+  if (journalItem) journalItem.classList.toggle(
     'pending',
     st.phase === 'done' && !state.journal[today.str] && !state.summaryDismissed[today.str]
   );

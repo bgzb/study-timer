@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, session, shell, screen, Notification, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, session, shell, screen, Notification, powerSaveBlocker, net } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -144,6 +144,8 @@ function setAutostart(v) {
 
 const BAR_WIDTH = 400;
 const BAR_HEIGHT = 620;
+// 侧边工具抽屉展开时各窗口记住的"收起态宽度"，用于恢复与托盘居中
+const drawerSavedWidth = { win: null, barWin: null };
 
 function createBarWindow() {
   barWin = new BrowserWindow({
@@ -192,9 +194,11 @@ function positionBarWindow() {
   if (!barWin || barWin.isDestroyed() || !tray) return;
   const tb = tray.getBounds();
   const [w, h] = barWin.getSize();
+  // 抽屉展开时窗口已向右加宽：仍按收起态宽度居中，托盘对着主内容区、左缘不挪动
+  const anchorWidth = drawerSavedWidth.barWin != null ? drawerSavedWidth.barWin : w;
   const display = screen.getDisplayNearestPoint({ x: Math.round(tb.x + tb.width / 2), y: Math.round(tb.y) });
   const wa = display.workArea;
-  let x = Math.round(tb.x + tb.width / 2 - w / 2);
+  let x = Math.round(tb.x + tb.width / 2 - anchorWidth / 2);
   x = Math.max(wa.x + 4, Math.min(x, wa.x + wa.width - w - 4));
   const y = Math.round(tb.y + tb.height + 6);
   barWin.setPosition(x, y, false);
@@ -394,6 +398,17 @@ ipcMain.on('sound:play', (_e, payload) => {
 ipcMain.on('sysprefs:notifications', () => {
   shell.openExternal('x-apple.systempreferences:com.apple.preference.notifications').catch(() => {});
 });
+// 节假日数据源代理抓取：渲染端无 nodeIntegration，走主进程可绕开 CORS 并复用系统代理；
+// 只放行节假日数据所信任的域名
+const FETCH_JSON_HOSTS = /^(cdn\.jsdelivr\.net|fastly\.jsdelivr\.net|raw\.githubusercontent\.com)$/;
+ipcMain.handle('net:fetch-json', async (_e, url) => {
+  let u;
+  try { u = new URL(String(url)); } catch (err) { throw new Error('invalid url'); }
+  if (u.protocol !== 'https:' || !FETCH_JSON_HOSTS.test(u.hostname)) throw new Error('host not allowed');
+  const res = await net.fetch(u.href, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.json();
+});
 // 通知统一走主进程原生通道：渲染进程的 HTML5 Notification 在临时签名的打包 App 上
 // 可能静默失败（系统设置里也不会注册），主进程 Notification 会触发系统授权并注册。
 // 提示音直接挂在通知上（sound=系统音名），由系统随横幅一起播放，最可靠。
@@ -492,16 +507,41 @@ ipcMain.on('bar:hide', () => {
 });
 ipcMain.on('bar:resize', (_e, payload) => {
   if (!barWin || barWin.isDestroyed() || !payload) return;
-  const w = Math.min(Math.max(parseInt(payload.w, 10) || BAR_WIDTH, 320), 480);
+  // 上限 720：面板本体 400 + 侧边抽屉展开最多再向右加宽 ~160（见 drawer:size）
+  let w = Math.min(Math.max(parseInt(payload.w, 10) || BAR_WIDTH, 320), 720);
   let h = Math.min(Math.max(parseInt(payload.h, 10) || 560, 320), 800);
-  // 高度不超过托盘所在显示器工作区（预留菜单栏与边距），避免面板顶出屏幕
+  // 高度/宽度不超过托盘所在显示器工作区（预留菜单栏与边距），避免面板顶出屏幕
   if (tray) {
     const tb = tray.getBounds();
     const wa = screen.getDisplayNearestPoint({ x: Math.round(tb.x), y: Math.round(tb.y) }).workArea;
     h = Math.min(h, wa.height - 24);
+    w = Math.min(w, wa.width - 8);
   }
   barWin.setSize(w, h, false);
   positionBarWindow();
+});
+// 侧边工具抽屉展开/收起：payload.w 为目标总宽（向右加宽，左缘固定，主页内容不动），
+// 为 null 时恢复展开前的宽度。bar 面板恢复时重新以托盘居中，回到展开前的原位。
+ipcMain.on('drawer:size', (_e, payload) => {
+  const target = payload && payload.w != null && parseInt(payload.w, 10) > 0 ? parseInt(payload.w, 10) : null;
+  const targets = [[win, 'win', false], [barWin, 'barWin', true]];
+  targets.forEach(([w, key, recenterOnRestore]) => {
+    if (!w || w.isDestroyed()) return;
+    const bounds = w.getBounds();
+    if (target) {
+      if (drawerSavedWidth[key] == null) drawerSavedWidth[key] = bounds.width;
+      const wa = screen.getDisplayNearestPoint({ x: bounds.x, y: bounds.y }).workArea;
+      const width = Math.min(target, wa.width - 8);
+      let x = bounds.x; // 左缘固定，向右生长，不挪动主页
+      if (x + width > wa.x + wa.width) x = Math.max(wa.x, wa.x + wa.width - width); // 右缘不够时整体左移
+      w.setBounds({ x, y: bounds.y, width, height: bounds.height }, true);
+    } else if (drawerSavedWidth[key] != null) {
+      const width = drawerSavedWidth[key];
+      drawerSavedWidth[key] = null;
+      w.setBounds({ x: bounds.x, y: bounds.y, width, height: bounds.height }, true);
+      if (recenterOnRestore) positionBarWindow();
+    }
+  });
 });
 ipcMain.on('bar:vibrancy', (_e, on) => {
   if (barWin && !barWin.isDestroyed()) {

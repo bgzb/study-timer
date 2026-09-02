@@ -63,6 +63,10 @@ function applyI18n() {
     const v = t(el.dataset.i18nTitle);
     if (typeof v === 'string') el.title = v;
   });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+    const v = t(el.dataset.i18nAria);
+    if (typeof v === 'string') el.setAttribute('aria-label', v);
+  });
   document.title = t('appName');
   const seg = $('#langSeg');
   if (seg) seg.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.lang === (state.language === 'en' ? 'en' : 'zh')));

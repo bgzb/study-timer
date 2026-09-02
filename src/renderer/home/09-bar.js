@@ -7,7 +7,9 @@ const BAR_W = 400, BAR_H = 620; // 与 main.js 的 BAR_WIDTH / BAR_HEIGHT 保持
 function scheduleBarResize() {
   if (!BAR_MODE || !bridge || !bridge.resizeBar) return;
   clearTimeout(barResizeTimer);
-  barResizeTimer = setTimeout(() => bridge.resizeBar(BAR_W, BAR_H), 120);
+  // 抽屉展开时窗口已被 drawer:size 加宽，重设尺寸要带上这部分宽度
+  const extra = (typeof drawerIsOpen === 'function' && drawerIsOpen()) ? drawerExtraWidth() : 0;
+  barResizeTimer = setTimeout(() => bridge.resizeBar(BAR_W + extra, BAR_H), 120);
 }
 
 function closeSettingsPanel() {
@@ -39,8 +41,8 @@ function applyBarTheme(theme, persist) {
     document.body.classList.toggle('glass', glass);
     if (bridge && bridge.setBarVibrancy) bridge.setBarVibrancy(glass);
   }
-  const themeBtn = $('#themeBtn');
-  if (themeBtn) themeBtn.setAttribute('aria-pressed', String(glass));
+  const themeItem = $('#toolDrawer .td-item[data-tool="theme"]');
+  if (themeItem) themeItem.setAttribute('aria-pressed', String(glass));
   if (persist) saveState();
 }
 
@@ -53,27 +55,23 @@ function syncPanelTheme() {
   applyBarTheme(stored || barTheme, false);
 }
 
-const themeBtn = $('#themeBtn');
-if (themeBtn) {
-  themeBtn.addEventListener('click', () => {
-    applyBarTheme(StudyTimerShared.nextPanelTheme(barTheme), true);
-  });
-}
+// 主题切换的点击动作在 17-tool-drawer.js 的 DRAWER_ACTIONS 里统一分发
 syncPanelTheme();
 
 if (BAR_MODE) {
   // 初始 vibrancy 与已存皮肤一致
   if (bridge && bridge.setBarVibrancy) bridge.setBarVibrancy(document.body.classList.contains('glass'));
 
-  // Escape：先收扩展面板/跳过理由/统计/设置弹层，再收面板
+  // Escape：按层级从上往下收——先弹层，再模式弹层，再侧边抽屉，最后收面板
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (typeof closeExtBar === 'function' && closeExtBar()) return;
     if (skipReasonOverlay.classList.contains('open')) { closeSkipReason(); return; }
     if (extraOverlay.classList.contains('open')) { closeExtra(); return; }
     if (statsOverlay.classList.contains('open')) { closeStatsPanel(); return; }
     if (settingsOverlay.classList.contains('open')) { closeSettingsPanel(); return; }
+    if (journalOverlay.classList.contains('open')) { closeJournalPanel(); return; }
     if (modePopover.style.display === 'block') { modePopover.style.display = 'none'; return; }
+    if (typeof closeDrawer === 'function' && closeDrawer()) return;
     if (bridge && bridge.hideBar) bridge.hideBar();
   });
 }

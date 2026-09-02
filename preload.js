@@ -25,8 +25,12 @@ contextBridge.exposeInMainWorld('studyTimer', {
   hideBar: () => ipcRenderer.send('bar:hide'),
   resizeBar: (w, h) => ipcRenderer.send('bar:resize', { w, h }),
   setBarVibrancy: (on) => ipcRenderer.send('bar:vibrancy', on),
+  // 侧边工具抽屉展开时向右加宽窗口、收起时恢复（w 为 null 表示恢复）
+  setDrawerWidth: (w) => ipcRenderer.send('drawer:size', { w: w == null ? null : Math.round(w) }),
   // 每日总结窗口（date 为 'YYYY-MM-DD'；focus=true 抢焦点，false 柔和弹出）
   openSummary: (date, focus) => ipcRenderer.send('summary:open', { date, focus }),
   // 每日时间块编辑窗口（date 为 'YYYY-MM-DD'）
-  openDay: (date) => ipcRenderer.send('day:open', { date })
+  openDay: (date) => ipcRenderer.send('day:open', { date }),
+  // 主进程代理抓取节假日数据源 JSON（域名白名单见 bootstrap.js）
+  fetchJson: (url) => ipcRenderer.invoke('net:fetch-json', url)
 });

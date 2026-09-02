@@ -1,7 +1,7 @@
 /* ==================== 设置弹窗 ==================== */
 
 const settingsOverlay = $('#settingsOverlay');
-$('#gearBtn').addEventListener('click', () => { openSettings(); });
+// 打开入口在侧边抽屉（17-tool-drawer.js 的 DRAWER_ACTIONS.settings）
 $('#closeSettings').addEventListener('click', () => { closeSettingsPanel(); });
 settingsOverlay.addEventListener('click', (e) => {
   if (e.target === settingsOverlay) closeSettingsPanel();
@@ -172,6 +172,7 @@ function renderHolidayTab() {
   if (!mkKeys.length) mkList.innerHTML = '<div class="desc" style="font-size:12px;color:var(--text2)">' + t('empty') + '</div>';
   holKeys.forEach((k) => holList.appendChild(holidayItem(k, state.holidays[k], 'holidays')));
   mkKeys.forEach((k) => mkList.appendChild(holidayItem(k, state.makeup[k] + ' · ' + t('makeupSuffix'), 'makeup')));
+  renderHolidaySyncStatus(holidaySyncing ? 'loading' : (holidaySyncOutcome || 'ok'));
 }
 
 function holidayItem(date, name, storeKey) {

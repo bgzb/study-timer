@@ -7,6 +7,7 @@ function defaultState() {
     holidays: Object.assign({}, BUILTIN_HOLIDAYS),
     makeup: Object.assign({}, BUILTIN_MAKEUP),
     holidayTableVersion: HOLIDAY_TABLE_VERSION,
+    holidaySync: {},        // 节假日网络同步记录：'年' -> { at, day, keys[] }（18-holiday-sync.js 维护）
     quotes: {
       zh: JSON.parse(JSON.stringify(DEFAULT_QUOTES)),
       en: JSON.parse(JSON.stringify(DEFAULT_QUOTES_EN))

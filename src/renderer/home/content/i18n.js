@@ -31,7 +31,11 @@ const I18N = {
     ph_name: '名称',
     todayHint: (w, m, note) => '今天（星期' + w + '）正按「' + m + note + '」作息运行，在当前页修改会立即生效。',
     holTitle: '节假日与调休补班',
-    holDesc: '已内置 2025–2026 年国务院法定节假日与调休安排。命中节假日按"节假日"作息，补班日按"工作日"作息，周六日按"周末"作息。可自行增删。',
+    holDesc: '法定节假日与调休安排自动从网络同步（数据来自国务院公告，每天检查一次；网络不可用时保留现有数据）。命中节假日按"节假日"作息，补班日按"工作日"作息，周六日按"周末"作息。可自行增删自定义日期。',
+    holSyncBtn: '立即更新', holSyncLoading: '正在更新节假日数据…',
+    holSynced: (y, at) => y + ' 年：已同步（' + at + '）',
+    holPending: (y) => y + ' 年：尚未同步（未发布或网络不可用）',
+    holSyncFail: '本次更新失败，已保留现有数据。',
     ph_date: '如 2026-10-01', ph_holName: '名称，如 国庆节',
     holTypeHoliday: '节假日', holTypeMakeup: '补班日', add: '添加',
     holCount: (n) => '节假日（' + n + '条）', mkCount: (n) => '调休补班日（' + n + '条）',
@@ -76,8 +80,9 @@ const I18N = {
     dayDoneNotify: '今天全部完成',
     nextSession: (name, tm) => '下一时段：' + name + ' ' + tm,
     waitTip: (name, tm) => '等待 ' + name + ' · ' + tm + ' 开始',
-    moreTitle: '更多功能',
-    extLabelJournal: '手记', extLabelStats: '统计', extLabelTheme: '主题',
+    drawerLabel: '工具栏', drawerExpand: '展开工具栏', drawerCollapse: '收起工具栏',
+    drawerGroupTools: '工具', drawerGroupSystem: '系统',
+    extLabelTheme: '主题',
     panelTheme: '切换面板主题（纸质 / 毛玻璃）',
     statsBtn: '统计', statsTitle: '学习统计',
     stats_today: '今日', stats_week: '近7天', stats_month: '当月', stats_year: '今年',
@@ -143,7 +148,11 @@ const I18N = {
     ph_name: 'Name',
     todayHint: (w, m, note) => 'Today (' + w + ') runs the "' + m + note + '" schedule — edits here take effect immediately.',
     holTitle: 'Holidays & makeup days',
-    holDesc: 'Includes the 2025\u20132026 official Chinese public holiday and makeup-workday arrangement. Holidays use the "Holiday" schedule, makeup days the "Workday" schedule, weekends the "Weekend" schedule. Edit freely.',
+    holDesc: 'Official holiday and makeup-workday data syncs automatically from the network (sourced from State Council announcements, checked once a day; existing data is kept when offline). Holidays use the "Holiday" schedule, makeup days the "Workday" schedule, weekends the "Weekend" schedule. Add your own dates freely.',
+    holSyncBtn: 'Update now', holSyncLoading: 'Updating holiday data…',
+    holSynced: (y, at) => y + ': synced (' + at + ')',
+    holPending: (y) => y + ': not synced yet (unpublished or offline)',
+    holSyncFail: 'Update failed; existing data was kept.',
     ph_date: 'e.g. 2026-10-01', ph_holName: 'Name, e.g. National Day',
     holTypeHoliday: 'Holiday', holTypeMakeup: 'Makeup workday', add: 'Add',
     holCount: (n) => 'Holidays (' + n + ')', mkCount: (n) => 'Makeup workdays (' + n + ')',
@@ -188,8 +197,9 @@ const I18N = {
     dayDoneNotify: 'All done for today',
     nextSession: (name, tm) => 'Next session: ' + name + ' at ' + tm,
     waitTip: (name, tm) => 'Waiting: ' + name + ' starts at ' + tm,
-    moreTitle: 'More',
-    extLabelJournal: 'Notes', extLabelStats: 'Stats', extLabelTheme: 'Theme',
+    drawerLabel: 'Toolbar', drawerExpand: 'Expand toolbar', drawerCollapse: 'Collapse toolbar',
+    drawerGroupTools: 'Tools', drawerGroupSystem: 'System',
+    extLabelTheme: 'Theme',
     panelTheme: 'Toggle panel theme (Paper / Glass)',
     statsBtn: 'Stats', statsTitle: 'Study Stats',
     stats_today: 'Today', stats_week: '7 Days', stats_month: 'Month', stats_year: 'Year',
@@ -224,3 +234,6 @@ const I18N = {
     jHeatHint: ' · Has review'
   }
 };
+
+// 供领域测试（tests/tool-registry.test.js 等）require；浏览器端无 module，不影响运行
+if (typeof module !== 'undefined' && module.exports) module.exports = I18N;

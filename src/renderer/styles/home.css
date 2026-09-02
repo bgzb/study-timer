@@ -78,25 +78,6 @@
   .badge-weekend { background: var(--break-bg); color: var(--break); }
   .badge-holiday { background: var(--study-bg); color: var(--study); }
   .badge.manual::after { content: " ✎"; opacity: 0.7; }
-  #gearBtn {
-    border: none; background: var(--card); color: var(--text2);
-    width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 17px;
-    box-shadow: var(--shadow); transition: transform 0.15s;
-  }
-  #gearBtn:hover { transform: rotate(30deg); color: var(--text); }
-  /* extBtn 的 margin-left:auto 把自己推到最右，gearBtn 紧随其后 */
-  #extBtn {
-    margin-left: auto; border: none; background: var(--card); color: var(--text2);
-    width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 15px;
-    box-shadow: var(--shadow); transition: transform 0.15s, color 0.15s;
-  }
-  #extBtn:hover { transform: translateY(-1px); color: var(--text); }
-  #extBtn + #gearBtn { margin-left: 0; }
-  /* 当天已结束但总结未填写时的小圆点提醒（磁贴右上角） */
-  #journalBtn.pending::after {
-    content: ''; position: absolute; top: 6px; right: 8px; width: 8px; height: 8px;
-    border-radius: 50%; background: var(--study); border: 2px solid var(--card);
-  }
 
   /* 模式覆盖弹层 */
   #modePopover {
@@ -112,29 +93,79 @@
   #modePopover button:hover { background: var(--card2); }
   #modePopover .hint { font-size: 11px; color: var(--text2); padding: 4px 12px 6px; }
 
-  /* 扩展功能面板（⌗）：悬浮/点击展开的磁贴网格，新增功能追加磁贴即自动换行 */
-  #extBar {
-    position: absolute; z-index: 60; background: var(--card); border-radius: 14px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.18); border: 1px solid var(--line);
-    top: 56px; right: 16px; display: none;
+  /* ===== 侧边工具抽屉 ===== */
+  /* 贴右缘常驻图标轨：点图标直达功能；点顶部箭头或悬停展开成带文字的抽屉。
+     展开时窗口向右加宽（主进程 drawer:size，左缘固定），主页宽度始终不变、不被遮挡；
+     浏览器开发模式无法加宽窗口，body padding 变化会把主页挤窄，同样不覆盖。
+     图标列固定在抽屉左缘：收起/展开两态下图标位置不动，悬停瞄准稳定。
+     尺寸变量 --td-rail / --td-open 与 17-tool-drawer.js 的 DRAWER_RAIL / DRAWER_OPEN 保持一致 */
+  :root { --td-rail: 52px; --td-open: 180px; }
+  body { padding-right: var(--td-rail); transition: padding-right 0.26s cubic-bezier(0.32, 0.72, 0.28, 1); }
+  body.drawer-open { padding-right: var(--td-open); }
+
+  #toolDrawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: var(--td-rail); z-index: 70;
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--card2);
+    border-left: 1px solid var(--line);
+    /* 左缘内凹阴影：与主页交界处的"抽屉腔体"暗部，暗示这一层在桌面之下 */
+    box-shadow: inset 14px 0 28px -14px rgba(0, 0, 0, 0.3);
+    transition: width 0.26s cubic-bezier(0.32, 0.72, 0.28, 1);
   }
-  #extBar.open { display: block; animation: extBarIn 0.16s ease-out; }
-  @keyframes extBarIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: none; }
+  body.drawer-open #toolDrawer { width: var(--td-open); }
+
+  #drawerToggle {
+    flex: 0 0 auto; display: flex; align-items: center;
+    height: 38px; margin: 8px 6px 2px; padding: 0;
+    border: none; background: none; color: var(--text2); border-radius: 11px;
+    cursor: pointer; transition: background 0.15s, color 0.15s;
   }
-  .ext-grid { display: grid; grid-template-columns: repeat(3, minmax(68px, 1fr)); gap: 4px; padding: 8px; }
-  .ext-item {
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    padding: 10px 8px 8px; border: none; background: none; color: var(--text2);
-    font-family: inherit; border-radius: 11px; cursor: pointer; position: relative;
+  #drawerToggle:hover { background: var(--card); color: var(--text); }
+  #drawerToggle .td-ico { font-size: 16px; }
+  /* 双箭头默认指向右（向右展开），展开后转回指向左（收起方向） */
+  #drawerToggle .ui-icon { transform: rotate(180deg); transition: transform 0.26s; }
+  body.drawer-open #drawerToggle .ui-icon { transform: none; }
+
+  #drawerScroll { flex: 1; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 2px 0 10px; }
+  .td-spacer { flex: 1; min-height: 12px; }
+  /* 分组标题（一级）：顶格居左、字号大于条目文字，条目图标/文字作为二级缩进其下 */
+  .td-group-title {
+    font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: 0.04em; text-align: left;
+    padding: 0 14px 0 12px;
+    height: 0; opacity: 0; overflow: hidden; white-space: nowrap;
+    transition: height 0.26s, opacity 0.26s;
+  }
+  body.drawer-open .td-group-title { height: 24px; padding-top: 6px; opacity: 1; }
+  .td-item {
+    display: flex; align-items: center;
+    height: 44px; margin: 1px 6px; padding: 0 10px 0 0;
+    border: none; background: none; color: var(--text2); font-family: inherit;
+    border-radius: 11px; cursor: pointer;
     transition: background 0.15s, color 0.15s;
   }
-  .ext-item:hover { background: var(--card2); color: var(--text); }
-  .ext-item[aria-pressed="true"] { background: var(--study-bg); color: var(--study); }
-  .ext-item:active { transform: scale(0.95); }
-  .ext-ico { font-size: 22px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
-  .ext-label { font-size: 11.5px; white-space: nowrap; }
+  .td-item:hover { background: var(--card); color: var(--text); }
+  .td-item[aria-pressed="true"] { background: var(--study-bg); color: var(--study); }
+  .td-item:active .td-ico { transform: scale(0.9); }
+  /* 图标列：固定宽度、水平居中，贴抽屉左缘，两态下位置不动 */
+  .td-ico {
+    position: relative;
+    flex: 0 0 calc(var(--td-rail) - 12px);
+    font-size: 19px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  /* 文字跟在图标列右侧、左对齐；收起态宽度归零被抽屉裁剪 */
+  .td-label {
+    flex: 1; min-width: 0; font-size: 12.5px; text-align: left;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 0; opacity: 0; padding-left: 8px;
+    transition: max-width 0.26s, opacity 0.2s;
+  }
+  body.drawer-open .td-label { max-width: calc(var(--td-open) - var(--td-rail) - 20px); opacity: 1; }
+  /* 当天已结束但总结未填写时的小圆点提醒（图标右上角） */
+  .td-item.pending .td-ico::after {
+    content: ''; position: absolute; top: -1px; right: 1px; width: 7px; height: 7px;
+    border-radius: 50%; background: var(--study); border: 2px solid var(--card2);
+  }
 
   /* ===== 状态卡 ===== */
   #phaseCard {
@@ -356,6 +387,9 @@
   }
   .list-item button:hover { color: var(--danger); background: rgba(198, 93, 93, 0.1); }
   .inline-form { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .hol-sync-row { display: flex; align-items: center; gap: 10px; margin: 10px 0 12px; }
+  .hol-sync-row #holSyncStatus { flex: 1; font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .hol-sync-row #holSyncBtn { flex-shrink: 0; font-size: 12px; padding: 5px 12px; }
   .inline-form input, .inline-form select {
     border: 1px solid var(--line); background: var(--card); color: var(--text);
     font-family: inherit; font-size: 13px; padding: 8px 10px; border-radius: 9px;
@@ -429,7 +463,7 @@
   .subsectionTitle:first-child { margin-top: 0; }
 
   /* ===== 菜单栏面板模式（body.bar）===== */
-  /* 主题切换磁贴已并入扩展面板（.ext-item），此处不再有独立头部按钮与底部 footer */
+  /* 主题切换/手记/统计/设置入口都在侧边工具抽屉（#toolDrawer），此处不再有独立头部按钮与底部 footer */
 
   /* ===== 学习统计面板 ===== */
   #statsOverlay {
@@ -717,10 +751,12 @@
   body.bar #app { max-width: 388px; min-height: 100%; justify-content: space-between; padding: 18px 18px 14px; gap: 12px; }
   body.bar #dateLine { font-size: 15px; }
   body.bar .badge { font-size: 11.5px; padding: 3px 10px; }
-  body.bar #gearBtn, body.bar #extBtn { width: 30px; height: 30px; font-size: 14px; border-radius: 9px; }
-  body.bar #extBar { top: 52px; right: 14px; }
-  body.bar .ext-ico { font-size: 20px; }
-  body.bar .ext-label { font-size: 11px; }
+  /* 抽屉紧凑适配：轨道与展开宽度收窄，条目变矮 */
+  body.bar { --td-rail: 44px; --td-open: 176px; }
+  body.bar #drawerToggle { height: 34px; margin-top: 6px; }
+  body.bar .td-item { height: 40px; }
+  body.bar .td-ico { font-size: 18px; }
+  body.bar .td-label { font-size: 12px; }
   body.bar #phaseCard { padding: 20px 18px 17px; border-radius: 15px; }
   body.bar #phaseLabel { font-size: 13px; gap: 5px; }
   body.bar #countdown { font-size: 48px; margin: 4px 0 2px; }
@@ -764,10 +800,17 @@
     --card2: rgba(248, 244, 238, 0.62);
     --line: rgba(120, 110, 95, 0.2);
   }
+  /* 抽屉作为"下一层"用更实的材质：重模糊 + 更高不透明度，与浮在上面的卡片拉开纵深 */
+  body.bar.glass #toolDrawer {
+    background: rgba(250, 247, 242, 0.86);
+    backdrop-filter: blur(24px) saturate(1.35);
+    -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  }
   @media (prefers-color-scheme: dark) {
     body.bar.glass {
       --card: rgba(44, 40, 36, 0.74);
       --card2: rgba(36, 32, 30, 0.62);
       --line: rgba(255, 255, 255, 0.1);
     }
+    body.bar.glass #toolDrawer { background: rgba(34, 30, 28, 0.88); }
   }

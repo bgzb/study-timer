@@ -197,7 +197,7 @@ function closeStatsPanel() {
   scheduleBarResize();
 }
 
-$('#statsBtn').addEventListener('click', () => { openStats(); });
+// 打开入口在侧边抽屉（17-tool-drawer.js 的 DRAWER_ACTIONS.stats）
 $('#closeStats').addEventListener('click', () => { closeStatsPanel(); });
 statsOverlay.addEventListener('click', (e) => {
   if (e.target === statsOverlay) closeStatsPanel();

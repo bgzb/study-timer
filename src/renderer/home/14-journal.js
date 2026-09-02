@@ -135,7 +135,7 @@ function closeJournalPanel() {
   scheduleBarResize();
 }
 
-$('#journalBtn').addEventListener('click', () => { openJournalPanel(); });
+// 打开入口在侧边抽屉（17-tool-drawer.js 的 DRAWER_ACTIONS.journal）
 $('#closeJournal').addEventListener('click', closeJournalPanel);
 journalOverlay.addEventListener('click', (e) => { if (e.target === journalOverlay) closeJournalPanel(); });
 $('#journalBody').addEventListener('click', (e) => {

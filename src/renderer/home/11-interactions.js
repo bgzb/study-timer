@@ -184,56 +184,14 @@ $('#skipConfirm').addEventListener('click', () => {
 if (!BAR_MODE) {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (closeExtBar()) return;
+    // 按层级从上往下收：先弹层，再侧边抽屉
     if (extraOverlay.classList.contains('open')) { closeExtra(); return; }
-    if (skipReasonOverlay.classList.contains('open')) closeSkipReason();
+    if (skipReasonOverlay.classList.contains('open')) { closeSkipReason(); return; }
+    closeDrawer();
   });
 }
 
-/* 扩展功能面板（⌗）：悬浮 ~120ms 展开，移开 ~280ms 收起，点击可切换开合 */
-const extBtn = $('#extBtn');
-const extBar = $('#extBar');
-let extOpenTimer = null, extCloseTimer = null;
-function extBarIsOpen() { return extBar.classList.contains('open'); }
-function openExtBar() {
-  clearTimeout(extCloseTimer);
-  if (extBarIsOpen()) return;
-  extBar.classList.add('open');
-  extBtn.setAttribute('aria-expanded', 'true');
-}
-function closeExtBar() {
-  clearTimeout(extOpenTimer);
-  if (!extBarIsOpen()) return false;
-  extBar.classList.remove('open');
-  extBtn.setAttribute('aria-expanded', 'false');
-  return true;
-}
-extBtn.addEventListener('mouseenter', () => {
-  clearTimeout(extCloseTimer);
-  clearTimeout(extOpenTimer);
-  extOpenTimer = setTimeout(openExtBar, 120);
-});
-extBtn.addEventListener('mouseleave', () => {
-  clearTimeout(extOpenTimer);
-  clearTimeout(extCloseTimer);
-  extCloseTimer = setTimeout(closeExtBar, 280);
-});
-// 悬停在面板上时保持展开，移开面板才开始收起倒计时
-extBar.addEventListener('mouseenter', () => clearTimeout(extCloseTimer));
-extBar.addEventListener('mouseleave', () => {
-  clearTimeout(extCloseTimer);
-  extCloseTimer = setTimeout(closeExtBar, 280);
-});
-extBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  clearTimeout(extOpenTimer);
-  if (extBarIsOpen()) closeExtBar(); else openExtBar();
-});
-// 点击磁贴执行动作后收起（统计/手记打开的是全屏弹层）
-extBar.addEventListener('click', (e) => { if (e.target.closest('.ext-item')) closeExtBar(); });
-document.addEventListener('click', (e) => {
-  if (extBarIsOpen() && !extBar.contains(e.target) && !extBtn.contains(e.target)) closeExtBar();
-});
+/* 侧边工具抽屉（开合交互与条目动作见 17-tool-drawer.js） */
 
 /* 模式覆盖弹层 */
 const modeBadge = $('#modeBadge');
