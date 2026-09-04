@@ -1,8 +1,14 @@
-/* ==================== 学习统计面板 ==================== */
+/* ==================== 学习统计面板（控制器） ==================== */
+/* 五视图（总览/趋势/热力/洞察/成就）+ 日详情/报告滑入层。
+   视图渲染在 13-stats-views.js / 13-stats-awards.js；本文件负责：
+   分发、进出场与图表动画、自定义 tooltip、事件路由、防抖刷新。
+   对外保留 openStats / closeStatsPanel / renderStatsPanel / refreshStatsPanelIfStale。 */
 
 const statsOverlay = $('#statsOverlay');
-let statsRange = 'today';
+const STATS_RANGES = ['overview', 'trend', 'heat', 'insights', 'awards'];
+let statsRange = 'overview';
 let lastPanelFocus = -1;
+let lastRangeIdx = 0;
 
 function statDateStr(d) {
   return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
@@ -27,176 +33,218 @@ function dayStatOf(str) {
   return (state.dailyStats || {})[str] || null;
 }
 function calcStreak() {
-  const has = (d) => { const s = dayStatOf(d); return s && s.focusMin > 0; };
-  let d = today.str;
-  if (!has(d)) d = addDaysStr(d, -1); // 今天还没开始学不打断连续记录
-  let cur = 0;
-  while (has(d)) { cur++; d = addDaysStr(d, -1); }
-  const dates = Object.keys(state.dailyStats || {}).filter(has).sort();
-  let best = 0, run = 0, prev = null;
-  for (const k of dates) {
-    run = (prev && addDaysStr(prev, 1) === k) ? run + 1 : 1;
-    if (run > best) best = run;
-    prev = k;
-  }
-  return { cur, best };
+  const r = StudyTimerShared.streaksOf(state.dailyStats || {}, today.str);
+  return { cur: r.cur, best: r.best };
+}
+/* i18n 函数键便捷取值：t 只回原始值，这里把模板函数直接执行 */
+function tf(key) {
+  const v = t(key);
+  return typeof v === 'function' ? v.apply(null, Array.prototype.slice.call(arguments, 1)) : v;
+}
+/* 防抖静默刷新时跳过动画：图表高度/宽度直接内联，不挂 data-h 延迟设值 */
+function stIsQuiet() {
+  return $('#statsBody').classList.contains('quiet');
+}
+function stHAttr(pct) {
+  return stIsQuiet() ? ' style="height:' + pct + '%"' : ' data-h="' + pct + '"';
+}
+function stWAttr(pct) {
+  return stIsQuiet() ? ' style="width:' + pct + '%"' : ' data-w="' + pct + '"';
 }
 
-function renderTodayView() {
-  const st = dayStatOf(today.str);
-  const focus = st ? st.focusMin : 0;
-  const done = st ? st.done : 0, total = st ? st.total : 0;
-  const rate = total > 0 ? Math.round((done / total) * 100) : 0;
-  let html = '<div class="stBig"><div class="v">' + fmtMin(focus) + '</div><div class="k">' + t('todayFocus') + '</div></div>';
-  html += '<div class="stSummary">'
-    + stCell(done + '/' + total, t('statDoneBlocks'))
-    + stCell(st ? st.skipped : 0, t('statSkipped'))
-    + stCell(rate + '%', t('statRate'))
-    + '</div>';
-  const logs = (st && st.blocks) || [];
-  if (!logs.length) return html + '<div class="stEmpty">' + t('statsEmpty') + '</div>';
-  html += '<div class="stLogTitle">' + t('todayLogTitle')
-    + '<button id="stEditDayBtn">' + iconText('edit', t('editDayBtn')) + '</button></div><div class="stLog">';
-  for (const b of logs) {
-    const hasR = b.sk && b.r;
-    html += '<div class="stLogItem' + (hasR ? ' hasR' : '') + '"><div class="l1">'
-      + '<span class="t">' + fmtClock(b.s) + ' – ' + fmtClock(b.e) + '</span>'
-      + (b.act ? '<span class="a">' + escHtml(b.act) + '</span>' : '')
-      + (b.sk ? '<span class="sk">' + t('skippedTag') + '</span>' : '')
-      + (b.f === false ? '<span class="sk nf">' + t('notFocusTag') + '</span>' : '')
-      + '<span class="m">' + t('durM')(b.min) + '</span></div>'
-      + (hasR ? '<div class="r">' + escHtml(b.r) + '</div>' : '')
-      + '</div>';
-  }
-  return html + '</div>';
+function statsViewHtml() {
+  if (statsRange === 'trend') return renderTrendView();
+  if (statsRange === 'heat') return renderHeatView();
+  if (statsRange === 'insights') return renderInsightsView();
+  if (statsRange === 'awards') return renderAwardsView();
+  return renderOverviewView();
 }
 
-function renderWeekView() {
-  const start = addDaysStr(today.str, -6);
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const key = addDaysStr(start, i);
-    days.push({ key, stat: dayStatOf(key) });
-  }
-  const max = Math.max(30, ...days.map((d) => (d.stat ? d.stat.focusMin : 0)));
-  let html = '<div class="stBars">';
-  for (const d of days) {
-    const min = d.stat ? d.stat.focusMin : 0;
-    const hPct = Math.max(2, Math.round((min / max) * 100));
-    html += '<div class="barCol' + (d.key === today.str ? ' today' : '') + '">'
-      + '<div class="barVal">' + (min > 0 ? Math.round(min) : '') + '</div>'
-      + '<div class="barWrap"><div class="bar' + (min > 0 ? '' : ' empty') + '" style="height:' + hPct + '%" title="' + d.key + ' · ' + fmtMin(min) + '"></div></div>'
-      + '<div class="barLab">' + t('weekShorts')[parseDateStr(d.key).getDay()] + '</div>'
-      + '</div>';
-  }
-  html += '</div>';
-  const totalMin = days.reduce((a, d) => a + (d.stat ? d.stat.focusMin : 0), 0);
-  const studyDays = days.filter((d) => d.stat && d.stat.focusMin > 0).length;
-  html += '<div class="stSummary">'
-    + stCell(fmtMin(totalMin), t('statTotal'))
-    + stCell(fmtMin(totalMin / 7), t('statAvg'))
-    + stCell(studyDays + '/7', t('statStudyDays'))
-    + '</div>';
-  return html;
-}
-
-function renderMonthView() {
-  const first = new Date(today.y, today.m - 1, 1);
-  const daysInMonth = new Date(today.y, today.m, 0).getDate();
-  let totalMin = 0, bestDay = 0, studyDays = 0;
-  let cells = '';
-  for (let i = 0; i < first.getDay(); i++) cells += '<div class="hCell empty"></div>';
-  for (let d = 1; d <= daysInMonth; d++) {
-    const key = statDateStr(new Date(today.y, today.m - 1, d));
-    const st = dayStatOf(key);
-    const min = st ? st.focusMin : 0;
-    if (min > 0) { studyDays++; totalMin += min; if (min > bestDay) bestDay = min; }
-    const lvl = min <= 0 ? 0 : min < 30 ? 1 : min < 60 ? 2 : min < 120 ? 3 : 4;
-    const hasJ = !!(state.journal && state.journal[key]);
-    cells += '<div class="hCell' + (lvl ? ' l' + lvl : '') + (hasJ ? ' has-j' : '') + (key === today.str ? ' today' : '') + '"'
-      + (hasJ ? ' data-date="' + key + '"' : '')
-      + ' title="' + key + ' · ' + fmtMin(min) + (hasJ ? t('jHeatHint') : '') + '"></div>';
-  }
-  let html = '<div class="stHeatHead">' + t('weekShorts').map((w) => '<span>' + w + '</span>').join('') + '</div>';
-  html += '<div class="stHeat">' + cells + '</div>';
-  html += '<div class="stSummary">'
-    + stCell(fmtMin(totalMin), t('statTotal'))
-    + stCell(fmtMin(studyDays ? totalMin / studyDays : 0), t('statAvg'))
-    + stCell(fmtMin(bestDay), t('statBestDay'))
-    + stCell(studyDays + '/' + daysInMonth, t('statStudyDays'))
-    + '</div>';
-  return html;
-}
-
-function renderYearView() {
-  const months = [];
-  for (let m = 1; m <= 12; m++) months.push({ m, min: 0, days: 0 });
-  for (const key in (state.dailyStats || {})) {
-    if (!key.startsWith(today.y + '-')) continue;
-    const st = state.dailyStats[key];
-    const m = months[Number(key.slice(5, 7)) - 1];
-    if (!m || !st) continue;
-    m.min += st.focusMin;
-    if (st.focusMin > 0) m.days++;
-  }
-  const max = Math.max(30, ...months.map((x) => x.min));
-  const totalMin = months.reduce((a, x) => a + x.min, 0);
-  const studyDays = months.reduce((a, x) => a + x.days, 0);
-  const bestMonth = months.reduce((a, x) => (x.min > a.min ? x : a), months[0]);
-  let html = '<div class="stBars">';
-  for (const x of months) {
-    const hPct = Math.max(2, Math.round((x.min / max) * 100));
-    html += '<div class="barCol' + (x.m === today.m ? ' today' : '') + '">'
-      + '<div class="barVal">' + (x.min > 0 ? Math.round(x.min) : '') + '</div>'
-      + '<div class="barWrap"><div class="bar' + (x.min > 0 ? '' : ' empty') + '" style="height:' + hPct + '%" title="' + t('monthLabel')(x.m) + ' · ' + fmtMin(x.min) + '"></div></div>'
-      + '<div class="barLab">' + (state.language === 'en' ? MONTH_EN[x.m - 1].slice(0, 3) : t('monthLabel')(x.m)) + '</div>'
-      + '</div>';
-  }
-  html += '</div>';
-  html += '<div class="stSummary">'
-    + stCell(fmtMin(totalMin), t('statTotal'))
-    + stCell(studyDays, t('statStudyDays'))
-    + stCell(t('monthLabel')(bestMonth.m), t('statBestMonth'))
-    + '</div>';
-  return html;
-}
-
-function renderStatsPanel() {
+function renderStatsPanel(opts) {
   if (!statsOverlay.classList.contains('open')) return;
+  const quiet = !!(opts && opts.quiet);
   const st = dayStatOf(today.str);
   lastPanelFocus = st ? st.focusMin : -1;
   const streak = calcStreak();
-  let view;
-  if (statsRange === 'week') view = renderWeekView();
-  else if (statsRange === 'month') view = renderMonthView();
-  else if (statsRange === 'year') view = renderYearView();
-  else view = renderTodayView();
-  $('#statsBody').innerHTML = '<div class="stStreak">'
-    + stCell2Chip(streak.cur, t('streakCur')) + stCell2Chip(streak.best, t('streakBest'))
-    + '</div>' + view;
+  const bal = StudyTimerShared.pointsBalance(state.dailyStats, state.points);
+  // 头部 chips：连续天数 + 积分余额
+  const streakChip = $('#stStreakChip');
+  if (streakChip) {
+    streakChip.innerHTML = iconSvg('flame', { size: 14 }) + '<b>' + streak.cur + '</b><span class="k">' + t('dayUnit') + '</span>';
+    streakChip.dataset.tip = '<div class="tt-k">' + escHtml(tf('streakTip', streak.cur, streak.best)) + '</div>';
+  }
+  const ptsChip = $('#stPtsChip');
+  if (ptsChip) {
+    ptsChip.innerHTML = iconSvg('gift', { size: 14 }) + '<b class="cu" data-to="' + bal.balance + '">0</b><span class="k">' + t('ptsUnit') + '</span>';
+    ptsChip.dataset.tip = '<div class="tt-k">' + escHtml(t('ptsBalance')) + '</div><div class="tt-s">' + escHtml(t('ptsRule')) + '</div>';
+  }
+  const body = $('#statsBody');
+  const scrollTop = quiet ? body.scrollTop : 0;
+  body.classList.toggle('quiet', quiet);
+  const idx = STATS_RANGES.indexOf(statsRange);
+  const dir = idx >= lastRangeIdx ? 'to-left' : 'to-right';
+  body.innerHTML = '<div class="stView ' + (quiet ? '' : dir) + '">' + statsViewHtml() + '</div>';
+  body.scrollTop = scrollTop;
+  lastRangeIdx = idx;
+  if (quiet) {
+    // 静默刷新：数字直接落定，不播任何动画
+    body.querySelectorAll('.cu[data-to]').forEach((el) => { el.textContent = el.dataset.to || '0'; });
+    const pc = ptsChip && ptsChip.querySelector('.cu');
+    if (pc) pc.textContent = pc.dataset.to || '0';
+  } else {
+    requestAnimationFrame(() => {
+      stAnimateIn(body);
+      if (ptsChip) { const pc = ptsChip.querySelector('.cu'); if (pc) stCountUp(pc); }
+    });
+  }
+  stSyncSegDot();
 }
-function stCell2Chip(v, k) {
-  return '<div class="chip"><div class="v">' + v + '</div><div class="k">' + k + '</div></div>';
+
+/* ---------- 进场动画编排：柱生长 / 进度条 / count-up / 滚动定位 ---------- */
+function stAnimateIn(root) {
+  // 柱状生长：先以 height:0 入文档，双 rAF 后设目标高度，按索引错峰
+  root.querySelectorAll('.stFill[data-h], .stBars .bar[data-h], .stTypeCol .bar[data-h], .stMiniBars .mb[data-h]').forEach((el, i) => {
+    el.style.transitionDelay = Math.min(i * 18, 400) + 'ms';
+  });
+  root.querySelectorAll('.stActItem .fill[data-w], .stReasonRow .bar[data-w]').forEach((el, i) => {
+    el.style.transitionDelay = Math.min(i * 40, 400) + 'ms';
+  });
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    root.querySelectorAll('.stFill[data-h], .stBars .bar[data-h], .stTypeCol .bar[data-h], .stMiniBars .mb[data-h]').forEach((el) => {
+      el.style.height = el.dataset.h + '%';
+    });
+    root.querySelectorAll('.stActItem .fill[data-w], .stReasonRow .bar[data-w]').forEach((el) => {
+      el.style.width = el.dataset.w + '%';
+    });
+    // 全年热力图滚动到本周
+    const scroll = root.querySelector('.stHeatScroll');
+    const todayCell = root.querySelector('.stYCell.today, .stYCell.l1, .stYCell.l2, .stYCell.l3, .stYCell.l4');
+    if (scroll) {
+      const anchorCell = root.querySelector('.stYCell.today') || todayCell;
+      if (anchorCell) scroll.scrollLeft = Math.max(0, anchorCell.offsetLeft - scroll.clientWidth * 0.6);
+    }
+  }));
+  root.querySelectorAll('.cu[data-to]').forEach((el) => stCountUp(el));
 }
-// 面板打开期间只在"今日"专注分钟数实际变化时重建视图：
-// 每秒全量重绘会打断悬停提示并与按钮点击竞态，近7天/当月/今年则无需实时刷新
+
+function stReducedMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+function stCountUp(el) {
+  const to = Number(el.dataset.to) || 0;
+  const dur = 650;
+  if ($('#statsBody').classList.contains('quiet') || stReducedMotion()) { el.textContent = String(to); return; }
+  const t0 = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = String(Math.round(to * eased));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* 成就分段红点：有本次会话新解锁且尚未看过成就页时提示 */
+function stSyncSegDot() {
+  const btn = $('#statsSeg button[data-range="awards"]');
+  if (btn) btn.classList.toggle('has-new', typeof stHasFreshUnlocks === 'function' && stHasFreshUnlocks());
+}
+
+// 面板打开期间只在"今日"专注分钟数实际变化时静默重建总览视图：
+// 每秒全量重绘会打断悬停提示与动画；其余视图打开期间不实时刷新
 function refreshStatsPanelIfStale() {
   if (!statsOverlay.classList.contains('open')) return;
   const st = dayStatOf(today.str);
   const f = st ? st.focusMin : 0;
-  if (statsRange === 'today' && f !== lastPanelFocus) renderStatsPanel();
+  if (statsRange === 'overview' && f !== lastPanelFocus) {
+    if (typeof syncAchievements === 'function' && syncAchievements().length) {
+      renderStatsPanel(); // 刚解锁成就 → 带动画重绘
+      return;
+    }
+    renderStatsPanel({ quiet: true });
+  }
 }
 
 function openStats() {
+  if (typeof syncAchievements === 'function') syncAchievements();
   statsOverlay.classList.add('open');
   renderStatsPanel();
   scheduleBarResize();
 }
 function closeStatsPanel() {
+  if (typeof closeStatsLayer === 'function') closeStatsLayer();
   statsOverlay.classList.remove('open');
   scheduleBarResize();
 }
 
+/* ---------- 自定义 tooltip（替换原生 title） ---------- */
+const stTip = $('#statsTip');
+function stTipHide() {
+  if (stTip) stTip.classList.remove('show');
+}
+function stTipMove(e) {
+  if (!stTip) return;
+  const rect = stTip.getBoundingClientRect();
+  // 先按光标所在侧翻转，再把两个坐标统一限制在视口内；超宽/超高 tooltip 也不得产生负上限。
+  let x = e.clientX + 14, y = e.clientY - rect.height - 10;
+  if (x + rect.width > window.innerWidth - 8) x = e.clientX - rect.width - 14;
+  if (y < 8) y = e.clientY + 16;
+  const maxX = Math.max(8, window.innerWidth - rect.width - 8);
+  const maxY = Math.max(8, window.innerHeight - rect.height - 8);
+  x = Math.max(8, Math.min(x, maxX));
+  y = Math.max(8, Math.min(y, maxY));
+  stTip.style.left = x + 'px';
+  stTip.style.top = y + 'px';
+}
+statsOverlay.addEventListener('mousemove', (e) => {
+  const el = e.target.closest ? e.target.closest('[data-tip], .stc-rc-bar, .stc-sc-dot') : null;
+  const tipHtml = el && statsOverlay.contains(el) ? (el.dataset.tip || (typeof stDynamicTip === 'function' ? stDynamicTip(el) : '')) : '';
+  if (el && tipHtml) {
+    stTip.innerHTML = tipHtml;
+    stTip.classList.add('show');
+    stTipMove(e);
+  } else stTipHide();
+});
+statsOverlay.addEventListener('mouseleave', stTipHide);
+statsOverlay.addEventListener('scroll', stTipHide, true);
+
+/* ---------- 事件路由：视图内交互统一走 data-act ---------- */
+function statsAction(act, el, e) {
+  switch (act) {
+    case 'day':
+      if (el.dataset.date) openStatsDayLayer(el.dataset.date);
+      return true;
+    case 'goto-awards':
+      statsSwitchRange('awards');
+      return true;
+    case 'goal-edit':
+    case 'goal-set':
+    case 'trend-kind':
+    case 'trend-prev':
+    case 'trend-next':
+    case 'trend-month':
+    case 'heat-prev':
+    case 'heat-next':
+    case 'ins-range':
+    case 'reward-add':
+    case 'reward-del':
+    case 'reward-redeem':
+    case 'rest-redeem':
+    case 'report':
+    case 'j-view':
+    case 'layer-back':
+    case 'layer-edit-day':
+    case 'report-copy':
+      return typeof statsViewAction === 'function' ? statsViewAction(act, el, e) : false;
+    default:
+      return false;
+  }
+}
+function statsSwitchRange(range) {
+  statsRange = range;
+  document.querySelectorAll('#statsSeg button').forEach((b) => b.classList.toggle('active', b.dataset.range === range));
+  renderStatsPanel();
+}
 // 打开入口在侧边抽屉（17-tool-drawer.js 的 DRAWER_ACTIONS.stats）
 $('#closeStats').addEventListener('click', () => { closeStatsPanel(); });
 statsOverlay.addEventListener('click', (e) => {
@@ -205,20 +253,31 @@ statsOverlay.addEventListener('click', (e) => {
 $('#statsSeg').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-range]');
   if (!btn) return;
-  statsRange = btn.dataset.range;
-  document.querySelectorAll('#statsSeg button').forEach((b) => b.classList.toggle('active', b === btn));
-  renderStatsPanel();
+  statsSwitchRange(btn.dataset.range);
 });
-// 月视图热力格：写过总结的日子可点击 → 打开该日手记详情
-$('#statsBody').addEventListener('click', (e) => {
-  if (e.target.closest('#stEditDayBtn')) {
-    closeStatsPanel();
-    openDayEditor(today.str);
-    return;
-  }
-  const cell = e.target.closest('.hCell.has-j');
-  if (cell && cell.dataset.date) {
-    closeStatsPanel();
-    openJournalPanel(cell.dataset.date);
-  }
+function onStatsActionEvent(e) {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  if (statsAction(el.dataset.act, el, e)) e.stopPropagation();
+}
+$('#statsBody').addEventListener('click', onStatsActionEvent);
+$('#statsLayerBody').addEventListener('click', onStatsActionEvent);
+$('#statsLayerHead').addEventListener('click', onStatsActionEvent);
+$('#statsHead').addEventListener('click', onStatsActionEvent);
+// 奖励表单回车提交
+$('#statsBody').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const el = e.target.closest('#stRewardName, #stRewardCost');
+  if (el) statsAction('reward-add', el, e);
+});
+
+// ←/→ 切换视图（滑入层打开或聚焦输入时不响应）
+document.addEventListener('keydown', (e) => {
+  if (!statsOverlay.classList.contains('open')) return;
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (document.activeElement && document.activeElement.closest('input,textarea,select')) return;
+  if ($('#statsLayer').classList.contains('open')) return;
+  const idx = STATS_RANGES.indexOf(statsRange);
+  const next = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
+  if (next >= 0 && next < STATS_RANGES.length) statsSwitchRange(STATS_RANGES[next]);
 });

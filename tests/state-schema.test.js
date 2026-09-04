@@ -16,3 +16,13 @@ test('default state creates independent nested objects', () => {
   a.schedules.workday[0].seq[0] = 99;
   assert.notEqual(a.schedules.workday[0].seq[0], b.schedules.workday[0].seq[0]);
 });
+
+test('check-in gate fields get safe defaults without touching saved data', () => {
+  const state = ensureState({ checkins: { '2026-09-02': { at: 'x', from: 100 } } });
+  assert.deepEqual(state.checkins, { '2026-09-02': { at: 'x', from: 100 } }); // 已有打卡记录保持原样
+  assert.equal(state.gateStart, '');
+  const broken = ensureState({ checkins: 'bad', gateStart: 42 });
+  assert.deepEqual(broken.checkins, {});   // 非法类型回落默认
+  assert.equal(broken.gateStart, '');
+  assert.deepEqual(defaultState().checkins, {});
+});

@@ -27,7 +27,9 @@
 - **不要删除或更换该证书，也不要从打包配置里移除 identity**：一旦签名身份变化或回到未签名状态，
   每次覆盖安装后 macOS 会把 App 当成"变了的应用"，系统会静默丢弃其通知（症状：通知和测试通知按钮都无反应）。
 - 通知投递结果记录在各 App userData 的 `notif-debug.log`（封顶 200 行）；排查通知问题先看这个文件
-  （`native shown` = 原生横幅已弹出；`falling back to osascript` = 被系统拦截后走了脚本兜底）。
+  （`native shown` = 原生横幅已确认弹出；`native show event unconfirmed` = 确认事件未触发，横幅可能已弹出）。
+  通知**只走原生通道**，不要加 osascript 之类脚本兜底：macOS 上 Electron 的 `show` 确认事件偶发丢失，
+  据此降级会造成同一条通知弹两遍（第二条归到"脚本编辑器"名下、点击无响应）。
 - 打包需 Node ≥ 20.19（`require(esm)` 支持非 CJS 的 `@noble/hashes` v2）；若 shell 里是旧版 Node
   （如 `/usr/local/bin/node` 16），用 nvm 的新版本（如 `~/.nvm/versions/node/v22.22.2/bin`）再跑 `npm run dist:menu`。
 

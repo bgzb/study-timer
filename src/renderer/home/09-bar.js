@@ -7,9 +7,11 @@ const BAR_W = 400, BAR_H = 620; // 与 main.js 的 BAR_WIDTH / BAR_HEIGHT 保持
 function scheduleBarResize() {
   if (!BAR_MODE || !bridge || !bridge.resizeBar) return;
   clearTimeout(barResizeTimer);
-  // 抽屉展开时窗口已被 drawer:size 加宽，重设尺寸要带上这部分宽度
-  const extra = (typeof drawerIsOpen === 'function' && drawerIsOpen()) ? drawerExtraWidth() : 0;
-  barResizeTimer = setTimeout(() => bridge.resizeBar(BAR_W + extra, BAR_H), 120);
+  // 抽屉状态可能在这段延迟期间变化，执行时再读取最新状态
+  barResizeTimer = setTimeout(() => {
+    const extra = (typeof drawerIsOpen === 'function' && drawerIsOpen()) ? drawerExtraWidth() : 0;
+    bridge.resizeBar(BAR_W + extra, BAR_H);
+  }, 120);
 }
 
 function closeSettingsPanel() {
@@ -27,6 +29,8 @@ function applyStateSync() {
   setQuote(currentState(day));
   if (settingsOverlay.classList.contains('open')) openSettings();
   if (journalOverlay.classList.contains('open')) renderJournalPanel();
+  if (statsOverlay.classList.contains('open') && typeof renderStatsPanel === 'function') renderStatsPanel({ quiet: true });
+  if (typeof refreshOpenStatsDayLayer === 'function') refreshOpenStatsDayLayer();
   scheduleBarResize();
 }
 if (bridge && bridge.onStateSync) bridge.onStateSync(() => applyStateSync());
@@ -67,6 +71,7 @@ if (BAR_MODE) {
     if (e.key !== 'Escape') return;
     if (skipReasonOverlay.classList.contains('open')) { closeSkipReason(); return; }
     if (extraOverlay.classList.contains('open')) { closeExtra(); return; }
+    if (typeof dismissStatsLayer === 'function' && dismissStatsLayer()) return; // 统计滑入层（日详情/报告）
     if (statsOverlay.classList.contains('open')) { closeStatsPanel(); return; }
     if (settingsOverlay.classList.contains('open')) { closeSettingsPanel(); return; }
     if (journalOverlay.classList.contains('open')) { closeJournalPanel(); return; }

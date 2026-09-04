@@ -1,0 +1,424 @@
+/* =====================================================================
+   统计面板扩展样式（五视图改版：总览/趋势/热力/洞察/成就 + 滑入层）
+   —— 只放新增样式；沿用 home.css 的既有变量与 .stBars/.stLogItem 等组件
+   ===================================================================== */
+
+/* ---------- 面板进出场 ---------- */
+#statsOverlay { opacity: 0; }
+#statsOverlay.open { opacity: 1; transition: opacity 0.22s ease; }
+#statsOverlay:not(.open) { transition: none; }
+#statsPanel { position: relative; transform-origin: 50% 40%; }
+#statsOverlay.open #statsPanel { animation: stPanelIn 0.32s cubic-bezier(0.32, 0.72, 0.28, 1); }
+@keyframes stPanelIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- 头部 chips + 分段 ---------- */
+#statsHead .stHeadChips { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+#statsHead .stHeadChips + #closeStats { margin-left: 8px; }
+.stHChip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--card2); border-radius: 999px; padding: 4px 10px;
+  font-size: 12px; font-weight: 600; color: var(--text);
+  font-variant-numeric: tabular-nums; cursor: pointer; border: 1px solid transparent;
+  transition: border-color 0.15s, color 0.15s;
+}
+.stHChip .ui-icon { color: var(--study); }
+.stHChip.pts .ui-icon { color: var(--break); }
+.stHChip:hover { border-color: var(--line); }
+.stHChip .k { font-weight: 400; color: var(--text2); font-size: 11px; }
+#statsSeg button { padding: 6px 11px; }
+#statsSeg button[data-range="awards"].has-new { position: relative; }
+#statsSeg button[data-range="awards"].has-new::after {
+  content: ''; position: absolute; top: 4px; right: 5px; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--danger);
+}
+
+/* 旧版 .stBars 柱（总览迷你 7 日）也纳入生长动画 */
+#statsBody .stBars .bar[data-h] {
+  height: 0;
+  transition: height 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.04);
+}
+
+/* ---------- 视图切换（方向感知滑动） ---------- */
+#statsBody .stView { animation: stViewIn 0.28s cubic-bezier(0.32, 0.72, 0.28, 1) both; }
+#statsBody .stView.to-left { --st-in-x: -18px; }
+#statsBody .stView.to-right { --st-in-x: 18px; }
+@keyframes stViewIn {
+  from { opacity: 0; transform: translateX(var(--st-in-x, 18px)); }
+  to { opacity: 1; transform: none; }
+}
+/* 实时防抖刷新时不重放动画，避免打断悬停与视觉跳动 */
+#statsBody.quiet .stView, #statsBody.quiet *, #statsBody.quiet *::before, #statsBody.quiet *::after {
+  animation: none !important; transition: none !important;
+}
+
+/* ---------- 卡片系统 ---------- */
+.stGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: stretch; }
+body.bar .stGrid { grid-template-columns: 1fr; }
+.stCard {
+  background: var(--card2); border-radius: 14px; padding: 12px 14px; min-width: 0;
+  display: flex; flex-direction: column;
+}
+.stCard.full { grid-column: 1 / -1; }
+.stCardTitle {
+  font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: 0.08em;
+  margin: 0 0 10px; display: flex; align-items: center; gap: 6px;
+}
+.stCardTitle .ui-icon { color: var(--study); }
+.stCardTitle .hint { margin-left: auto; font-weight: 400; letter-spacing: normal; font-size: 10.5px; }
+.stEmptyCard { color: var(--text2); font-size: 12px; text-align: center; padding: 18px 0 10px; }
+
+/* stagger 渐显（洞察卡片、徽章等，JS 设 --d 毫秒） */
+.stFade { opacity: 0; animation: stFadeIn 0.4s ease-out both; animation-delay: var(--d, 0ms); }
+@keyframes stFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- 总览 hero ---------- */
+.stHero {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--study-bg); border-radius: 16px; padding: 14px 16px; margin-bottom: 10px;
+}
+.stHero .grow { flex: 1; min-width: 0; }
+.stHero .num { font-size: 30px; font-weight: 700; color: var(--study); font-variant-numeric: tabular-nums; line-height: 1.15; }
+.stHero .num small { font-size: 14px; font-weight: 600; margin-left: 2px; }
+.stHero .k { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.stRingWrap { position: relative; width: 64px; height: 64px; flex-shrink: 0; cursor: pointer; }
+.stRingWrap .stRingText {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--study); font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.stRingWrap .stRingText .k { font-size: 9px; font-weight: 400; color: var(--text2); }
+.stHero .done-mark { color: var(--break); }
+
+/* 目标编辑弹层（hero 下方展开） */
+.stGoalEdit { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 12px; animation: stFadeIn 0.25s ease-out both; }
+.stGoalEdit button {
+  border: 1px solid var(--line); background: var(--card); color: var(--text2); font-family: inherit;
+  font-size: 12px; padding: 4px 12px; border-radius: 999px; cursor: pointer; transition: all 0.15s;
+}
+.stGoalEdit button:hover { border-color: var(--study); color: var(--study); }
+.stGoalEdit button.off { color: var(--danger); border-color: transparent; }
+.stGoalEdit button.off:hover { border-color: var(--danger); }
+
+/* 摘要行里的环形小卡 */
+.stRingCell { display: flex; align-items: center; gap: 8px; justify-content: center; }
+.stRingCell .stRingWrap { width: 40px; height: 40px; cursor: default; }
+.stRingCell .stRingWrap .stRingText { font-size: 10px; }
+
+/* ---------- 积分卡（总览） / 积分 hero（成就页） ---------- */
+.stPtsCard { display: flex; align-items: center; gap: 10px; }
+.stPtsCard .ic {
+  width: 38px; height: 38px; border-radius: 12px; background: var(--break-bg);
+  display: grid; place-items: center; color: var(--break); flex-shrink: 0;
+}
+.stPtsCard .v { font-size: 20px; font-weight: 700; color: var(--break); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stPtsCard .k { font-size: 11px; color: var(--text2); }
+.stPtsCard .go { margin-left: auto; flex-shrink: 0; }
+
+/* ---------- 趋势：图表结构（均值线 / 均线 / 柱） ---------- */
+.stTrendHead { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.stPillSeg { display: inline-flex; background: var(--card2); border-radius: 10px; padding: 2px; gap: 2px; }
+.stPillSeg button {
+  border: none; background: none; font-family: inherit; font-size: 12px; color: var(--text2);
+  padding: 4px 11px; border-radius: 8px; cursor: pointer;
+}
+.stPillSeg button.active { background: var(--card); color: var(--text); font-weight: 600; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+.stTrendNav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.stTrendNav .lab { font-size: 12.5px; font-weight: 600; color: var(--text); margin: 0 4px; font-variant-numeric: tabular-nums; }
+.stNavBtn {
+  width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line); background: var(--card);
+  color: var(--text2); cursor: pointer; display: grid; place-items: center; transition: all 0.15s; padding: 0;
+}
+.stNavBtn:hover:not(:disabled) { border-color: var(--study); color: var(--study); }
+.stNavBtn:disabled { opacity: 0.35; cursor: default; }
+.stTrendWrap { position: relative; }
+.stChart { display: flex; flex-direction: column; height: 158px; }
+.stPlot { position: relative; flex: 1; min-height: 0; display: flex; align-items: flex-end; }
+.stCols { display: flex; align-items: stretch; gap: 4px; width: 100%; height: 100%; position: relative; z-index: 1; }
+.stCol { flex: 1; display: flex; align-items: flex-end; justify-content: center; min-width: 0; cursor: pointer; }
+.stCol .stFill {
+  width: 100%; max-width: 30px; height: 0; background: var(--study); opacity: 0.85;
+  border-radius: 4px 4px 2px 2px; transition: height 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.04);
+}
+.stCol:hover .stFill { opacity: 1; }
+.stCol .stFill.empty { background: var(--line); opacity: 1; }
+.stCol.future { cursor: default; }
+.stCol.today .stFill { opacity: 1; box-shadow: 0 0 0 1.5px var(--study-bg); }
+.stAvgLine {
+  position: absolute; left: 0; right: 0; border-top: 1px dashed var(--text2); opacity: 0.45; z-index: 0;
+}
+.stAvgLine span {
+  position: absolute; right: 0; top: -16px; font-size: 9.5px; color: var(--text2); opacity: 0.9;
+  background: var(--card); padding: 0 4px; border-radius: 4px; white-space: nowrap;
+}
+.stMaLine { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.stMaLine svg { width: 100%; height: 100%; display: block; }
+.stChartX { display: flex; gap: 4px; padding-top: 5px; height: 15px; }
+.stChartX span { flex: 1; text-align: center; font-size: 9.5px; color: var(--text2); min-width: 0; white-space: nowrap; overflow: visible; }
+.stDeltaUp { color: var(--break) !important; }
+.stDeltaDown { color: var(--danger) !important; }
+
+/* ---------- 热力：全年贡献图 ---------- */
+.stHeatWrap { margin-bottom: 6px; }
+.stHeatScroll { overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.stHeatScroll::-webkit-scrollbar { height: 5px; }
+.stHeatScroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.stHeatInner { position: relative; width: max-content; }
+.stYMonths { position: relative; height: 14px; margin-left: 20px; }
+.stYMonths span { position: absolute; top: 0; font-size: 10px; color: var(--text2); white-space: nowrap; }
+.stYBody { display: flex; gap: 3px; }
+.stYDays { display: flex; flex-direction: column; gap: 3px; width: 16px; flex-shrink: 0; margin-right: 4px; }
+.stYDays span { height: 10px; font-size: 9px; color: var(--text2); line-height: 10px; }
+.stYCol { display: flex; flex-direction: column; gap: 3px; }
+.stYCell {
+  width: 10px; height: 10px; border-radius: 3px; background: var(--card2);
+  border: 1px solid var(--line); box-sizing: border-box; cursor: pointer; position: relative;
+  opacity: 0; animation: stCellIn 0.3s ease-out both; animation-delay: var(--d, 0ms);
+}
+@keyframes stCellIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: none; } }
+.stYCell.l1 { background: var(--study-bg); border-color: transparent; }
+.stYCell.l2 { background: var(--study-soft); border-color: transparent; }
+.stYCell.l3 { background: var(--study); border-color: transparent; opacity: 0.65; animation: stCellInLvl 0.3s ease-out both; animation-delay: var(--d, 0ms); }
+.stYCell.l4 { background: var(--study); border-color: transparent; }
+@keyframes stCellInLvl { from { opacity: 0; transform: scale(0.5); } to { opacity: 0.65; transform: none; } }
+.stYCell.future { cursor: default; background: transparent; border-color: var(--line); opacity: 0.4; animation: none; }
+.stYCell.void { background: transparent; border-color: transparent; animation: none; cursor: default; }
+.stYCell.today { box-shadow: 0 0 0 2px var(--text2); }
+.stYCell.has-j::after {
+  content: ''; position: absolute; top: -1px; right: -1px; width: 4px; height: 4px;
+  border-radius: 50%; background: var(--break); box-shadow: 0 0 0 1.5px var(--card);
+}
+.stHeatLegend { display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin-top: 6px; font-size: 10px; color: var(--text2); }
+.stHeatLegend i { width: 10px; height: 10px; border-radius: 3px; background: var(--card2); border: 1px solid var(--line); box-sizing: border-box; display: inline-block; }
+.stHeatLegend i.l1 { background: var(--study-bg); border-color: transparent; }
+.stHeatLegend i.l2 { background: var(--study-soft); border-color: transparent; }
+.stHeatLegend i.l3 { background: var(--study); opacity: 0.65; border-color: transparent; }
+.stHeatLegend i.l4 { background: var(--study); border-color: transparent; }
+
+/* ---------- 洞察卡 ---------- */
+.stClockWrap { display: flex; align-items: center; gap: 10px; }
+.stClockWrap .clock { flex: 1; max-width: 210px; margin: 0 auto; }
+.stClockSide { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+body.bar .stClockWrap { flex-direction: column; }
+.stLegend { display: flex; gap: 10px; font-size: 11px; color: var(--text2); flex-wrap: wrap; }
+.stLegend i { width: 8px; height: 8px; border-radius: 2.5px; display: inline-block; margin-right: 4px; }
+.stLegend .s1 i { background: var(--study); }
+.stLegend .s2 i { background: var(--break); }
+.stPeakLine { font-size: 12px; color: var(--text); }
+.stPeakLine b { color: var(--study); font-variant-numeric: tabular-nums; }
+.stClockPeak { display: flex; align-items: center; gap: 5px; line-height: 1.35; }
+.stClockPeak .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; background: var(--study); }
+.stClockPeak .dot.s2 { background: var(--break); }
+.stSkipPeak { margin-top: 2px; color: var(--text2); font-size: 11.5px; }
+.stSkipNoReason { margin-top: 7px; color: var(--text2); font-size: 11px; }
+
+.stActRow { display: flex; flex-direction: column; gap: 7px; }
+.stActItem { min-width: 0; }
+.stActItem .r1 { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; margin-bottom: 3px; }
+.stActItem .nm { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stActItem .ct { color: var(--text2); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.stActItem .track { height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.stActItem .fill {
+  height: 100%; border-radius: 4px; background: var(--study); width: 0;
+  transition: width 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.03);
+}
+
+.stSkipTop { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.stSkipTop .big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stSkipTop .k { font-size: 11px; color: var(--text2); }
+.stReasonRow { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; }
+.stReasonRow .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.stReasonRow .bar { height: 6px; border-radius: 3px; background: var(--wait); opacity: 0.6; min-width: 0; width: 0; transition: width 0.6s ease; }
+.stReasonRow .n { color: var(--text2); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.stMoodRow { display: flex; justify-content: space-between; margin: 2px 0 10px; }
+.stMoodCell { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--text2); }
+.stMoodCell.on .ui-icon { color: var(--study); }
+.stMoodCell .n { font-size: 11px; font-variant-numeric: tabular-nums; }
+.stTagChips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.stTagChips span {
+  font-size: 11px; background: var(--card); border: 1px solid var(--line); color: var(--text2);
+  border-radius: 999px; padding: 2px 9px;
+}
+.stTagChips span b { color: var(--text); font-weight: 600; }
+
+.stTypeBars { display: flex; gap: 10px; align-items: stretch; height: 108px; padding-top: 14px; }
+.stTypeCol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
+.stTypeCol .v { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stTypeCol .bar { width: 100%; max-width: 34px; height: 0; background: var(--study); opacity: 0.85; border-radius: 5px 5px 2px 2px; transition: height 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.04); }
+.stTypeCol:nth-child(2) .bar { background: var(--break); opacity: 0.8; }
+.stTypeCol:nth-child(3) .bar { background: var(--wait); opacity: 0.8; }
+.stTypeCol .k { font-size: 10.5px; color: var(--text2); white-space: nowrap; }
+.stTypeCol .r { font-size: 9.5px; color: var(--text2); }
+
+.stMiniBars { display: flex; align-items: flex-end; gap: 3px; height: 64px; }
+.stMiniBars .mb { flex: 1; background: var(--study); opacity: 0.8; border-radius: 3px 3px 1px 1px; height: 0; transition: height 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.04); min-height: 2px; }
+.stMiniBars .mb:last-child { opacity: 1; }
+.stMiniX { display: flex; gap: 3px; margin-top: 4px; }
+.stMiniX span { flex: 1; text-align: center; font-size: 9px; color: var(--text2); }
+
+/* ---------- 成就：徽章墙 / 奖励 ---------- */
+.stPtsHero {
+  display: flex; align-items: center; gap: 14px; background: var(--break-bg);
+  border-radius: 16px; padding: 14px 16px; margin-bottom: 12px;
+}
+.stPtsHero .ic {
+  width: 44px; height: 44px; border-radius: 14px; background: var(--card);
+  display: grid; place-items: center; color: var(--break); flex-shrink: 0;
+}
+.stPtsHero .v { font-size: 28px; font-weight: 700; color: var(--break); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stPtsHero .k { font-size: 11.5px; color: var(--text2); margin-top: 2px; }
+.stPtsHero .sub { margin-left: auto; text-align: right; font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums; line-height: 1.7; }
+
+.stRewardRow {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; font-size: 12.5px;
+}
+.stRewardRow .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stRewardRow .cost { color: var(--break); font-weight: 600; font-size: 11.5px; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.stRewardRow .ops { display: flex; gap: 4px; flex-shrink: 0; }
+.stRewardBtn {
+  border: 1px solid var(--break); background: transparent; color: var(--break); font-family: inherit;
+  font-size: 11px; padding: 3px 10px; border-radius: 999px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.stRewardBtn:hover:not(:disabled) { background: var(--break-bg); }
+.stRewardBtn:disabled { border-color: var(--line); color: var(--text2); opacity: 0.6; cursor: not-allowed; }
+.stRewardBtn.arm { background: var(--danger); border-color: var(--danger); color: #fff; }
+/* 阶梯休息券：系统内置行，名称下多一行价格规则说明 */
+.stRewardRow.sys { padding: 8px 10px; }
+.stRewardRow.sys .nm { white-space: normal; display: flex; flex-direction: column; gap: 2px; }
+.stRewardRow.sys .nm .meta { font-style: normal; font-size: 10.5px; color: var(--text2); font-weight: 400; }
+.stDelBtn {
+  border: none; background: none; color: var(--text2); cursor: pointer; padding: 3px;
+  display: grid; place-items: center; border-radius: 6px; transition: color 0.15s;
+}
+.stDelBtn:hover { color: var(--danger); }
+.stAddRow { display: flex; gap: 6px; margin-top: 8px; }
+.stAddRow input {
+  flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 9px; background: var(--card);
+  color: var(--text); font-family: inherit; font-size: 12.5px; padding: 6px 10px; outline: none;
+}
+.stAddRow input:focus { border-color: var(--study); }
+.stAddRow input.cost { flex: 0 0 76px; font-variant-numeric: tabular-nums; }
+.stSpendRow { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 5px 2px; color: var(--text2); }
+.stSpendRow .nm { color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stSpendRow .c { color: var(--break); font-weight: 600; font-variant-numeric: tabular-nums; }
+.stSpendRow .d { font-size: 10.5px; font-variant-numeric: tabular-nums; }
+
+.stBadgeGroup { margin-bottom: 4px; }
+.stBadges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; perspective: 600px; }
+body.bar .stBadges { grid-template-columns: repeat(3, 1fr); }
+.stBadge {
+  background: var(--card); border: 1px solid var(--line); border-radius: 13px;
+  padding: 10px 4px 8px; text-align: center; position: relative; min-width: 0;
+  animation: stBadgeIn 0.45s cubic-bezier(0.3, 0.8, 0.3, 1.1) both; animation-delay: var(--d, 0ms);
+}
+@keyframes stBadgeIn { from { opacity: 0; transform: rotateY(70deg) scale(0.85); } to { opacity: 1; transform: none; } }
+.stBadge .ic {
+  width: 34px; height: 34px; margin: 0 auto 5px; border-radius: 11px;
+  background: var(--study-bg); color: var(--study); display: grid; place-items: center;
+}
+.stBadge .nm { font-size: 10px; color: var(--text); line-height: 1.35; height: 26px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.stBadge .dt { font-size: 9px; color: var(--text2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stBadge .pr { height: 3px; border-radius: 2px; background: var(--line); margin: 5px 8px 0; overflow: hidden; }
+.stBadge .pr i { display: block; height: 100%; background: var(--study); border-radius: 2px; }
+.stBadge.locked { opacity: 0.62; }
+.stBadge.locked .ic { background: var(--card2); color: var(--text2); }
+.stBadge.locked .pr i { background: var(--text2); }
+.stBadge.fresh .ic { animation: stShine 1.6s ease-out 0.5s; }
+@keyframes stShine {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  35% { box-shadow: 0 0 0 5px var(--study-bg), 0 0 14px var(--study-soft); }
+}
+.stBadgeTip { font-size: 10px; color: var(--text2); margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+/* ---------- 滑入层（日详情 / 报告） ---------- */
+#statsLayer {
+  position: absolute; inset: 0; z-index: 3; background: var(--card);
+  display: flex; flex-direction: column; border-radius: 20px;
+  transform: translateX(100%); visibility: hidden;
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0.28, 1), visibility 0.3s;
+}
+#statsLayer.open { transform: none; visibility: visible; }
+#statsLayerHead {
+  display: flex; align-items: center; gap: 8px; padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--line); flex-shrink: 0;
+}
+#statsLayerHead h3 { font-size: 15.5px; margin: 0; }
+#statsLayerHead .sub { font-size: 11px; color: var(--text2); }
+#statsLayerHead .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+#statsLayerBody { padding: 14px 20px 22px; overflow-y: auto; flex: 1; min-height: 0; }
+
+.stDayStrip { position: relative; height: 26px; border-radius: 8px; background: var(--card2); overflow: hidden; margin: 4px 0 2px; }
+.stDayStrip i { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; background: var(--study); opacity: 0.8; }
+.stDayStrip i.sk { background: var(--danger); opacity: 0.45; }
+.stDayStrip .now { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--text2); }
+.stDayStripX { display: flex; justify-content: space-between; font-size: 9px; color: var(--text2); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+
+.stJCard { background: var(--card2); border-radius: 13px; padding: 11px 13px; margin: 10px 0; }
+.stJCard .r1 { display: flex; align-items: center; gap: 8px; }
+.stJCard .headline { font-size: 13px; font-weight: 600; margin: 6px 0 2px; }
+.stJCard .more { margin-left: auto; flex-shrink: 0; }
+
+.stReportMeta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.stReportMeta .m { background: var(--card2); border-radius: 12px; padding: 9px 6px; text-align: center; min-width: 0; }
+.stReportMeta .m .v { font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stReportMeta .m .k { font-size: 10px; color: var(--text2); margin-top: 2px; white-space: nowrap; }
+.stReportLines { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
+.stReportLines .ln { display: flex; gap: 8px; font-size: 12.5px; color: var(--text); line-height: 1.5; }
+.stReportLines .ln::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--study-soft); flex-shrink: 0; margin-top: 6px; }
+.stCopyBtn { margin-top: 4px; }
+
+/* ---------- tooltip（替换原生 title） ---------- */
+#statsTip {
+  position: fixed; z-index: 120; pointer-events: none;
+  max-width: min(230px, calc(100vw - 16px)); max-height: 60vh;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 7px 10px; font-size: 12px; color: var(--text);
+  opacity: 0; transform: translateY(4px); transition: opacity 0.15s ease, transform 0.15s ease;
+}
+#statsTip.show { opacity: 1; transform: none; }
+#statsTip .tt-k { color: var(--text2); font-size: 10.5px; margin-bottom: 2px; }
+#statsTip .tt-v { font-weight: 700; font-variant-numeric: tabular-nums; }
+#statsTip .tt-s { color: var(--text2); font-size: 11px; margin-top: 2px; }
+
+/* ---------- SVG 图表通用 ---------- */
+.stc-line .stc-area { fill: var(--study); fill-opacity: 0.1; }
+.stc-line .stc-stroke { stroke: var(--study); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: stLineDraw 0.9s cubic-bezier(0.3, 0.6, 0.3, 1) 0.15s forwards; }
+@keyframes stLineDraw { to { stroke-dashoffset: 0; } }
+.stc-ring .stc-ring-track { stroke: var(--line); }
+.stc-ring .stc-ring-val {
+  stroke: var(--study); stroke-dasharray: var(--p) 1; stroke-dashoffset: var(--p);
+  animation: stRingDraw 0.8s cubic-bezier(0.3, 0.7, 0.3, 1) forwards;
+}
+@keyframes stRingDraw { to { stroke-dashoffset: 0; } }
+.stc-clock .stc-rc-grid { stroke: var(--line); stroke-dasharray: 2 4; }
+.stc-clock .stc-rc-bar { stroke: var(--study); stroke-width: 6; stroke-linecap: round; opacity: 0; animation: stBarIn 0.4s ease-out forwards; }
+.stc-clock .stc-rc-bar.alt { stroke: var(--break); stroke-width: 4; opacity: 0; }
+@keyframes stBarIn { from { opacity: 0; } to { opacity: 0.9; } }
+.stc-clock .stc-rc-bar.alt { animation-name: stBarInAlt; }
+@keyframes stBarInAlt { from { opacity: 0; } to { opacity: 0.75; } }
+.stc-clock .stc-rc-lab { fill: var(--text2); font-size: 10px; stroke: none; }
+.stc-scatter .stc-sc-grid { stroke: var(--line); }
+.stc-scatter .stc-sc-lab { fill: var(--text2); font-size: 9.5px; stroke: none; }
+.stc-scatter .stc-sc-dot { fill: var(--study); fill-opacity: 0.75; opacity: 0; animation: stDotIn 0.35s ease-out forwards; cursor: pointer; }
+.stc-scatter .stc-sc-dot:hover { fill-opacity: 1; }
+@keyframes stDotIn { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 400px) {
+  .stGrid { grid-template-columns: 1fr; }
+  .stClockWrap { align-items: flex-start; gap: 6px; }
+  .stClockWrap .clock { max-width: 180px; }
+  .stClockSide { gap: 6px; }
+  .stClockPeak { font-size: 10.5px; }
+  .stReasonRow { gap: 5px; }
+  .stReasonRow .txt { font-size: 10.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #statsOverlay, #statsOverlay *, #statsLayer, #statsLayer * {
+    animation: none !important; transition: none !important;
+  }
+  #statsOverlay.open { opacity: 1; }
+}

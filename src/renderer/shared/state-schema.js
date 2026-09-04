@@ -22,12 +22,21 @@
     holiday: [{ name: '上午', start: '09:00', seq: [40, 10, 40] }, { name: '下午', start: '14:00', seq: [40, 10, 40, 10, 40] }, { name: '晚上', start: '20:00', seq: [40, 10, 40] }]
   };
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
-  function defaultState() { return { language: 'zh', schedules: clone(DEFAULT_SCHEDULES), holidays: Object.assign({}, BUILTIN_HOLIDAYS), makeup: Object.assign({}, BUILTIN_MAKEUP), holidayTableVersion: HOLIDAY_TABLE_VERSION, holidaySync: {}, quotes: {}, notifications: true, sound: 'chime', volume: 0.7, override: {}, skips: {}, extra: {}, dailyStats: {}, blocks: {}, journal: {}, summaryDismissed: {}, enableAck: false }; }
+  function defaultState() { return { language: 'zh', schedules: clone(DEFAULT_SCHEDULES), holidays: Object.assign({}, BUILTIN_HOLIDAYS), makeup: Object.assign({}, BUILTIN_MAKEUP), holidayTableVersion: HOLIDAY_TABLE_VERSION, holidaySync: {}, quotes: {}, notifications: true, sound: 'chime', volume: 0.7, override: {}, skips: {}, extra: {}, dailyStats: {}, blocks: {}, journal: {}, summaryDismissed: {}, enableAck: false, goals: { dailyMin: 120 }, points: { rewards: [], spends: [] }, achievements: { unlockedAt: {} }, checkins: {}, gateStart: '' }; }
   function ensureState(saved) {
     const state = defaultState();
     if (saved && typeof saved === 'object' && !Array.isArray(saved)) Object.assign(state, saved);
     if (!state.schedules || typeof state.schedules !== 'object') state.schedules = clone(DEFAULT_SCHEDULES);
-    for (const key of ['holidays', 'makeup', 'holidaySync', 'override', 'skips', 'extra', 'dailyStats', 'blocks', 'journal', 'summaryDismissed']) if (!state[key] || typeof state[key] !== 'object' || Array.isArray(state[key])) state[key] = {};
+    for (const key of ['holidays', 'makeup', 'holidaySync', 'override', 'skips', 'extra', 'dailyStats', 'blocks', 'journal', 'summaryDismissed', 'checkins']) if (!state[key] || typeof state[key] !== 'object' || Array.isArray(state[key])) state[key] = {};
+    if (typeof state.gateStart !== 'string') state.gateStart = '';
+    // 统计页新增字段：仅补默认，不动已有数据（旧 state 缺字段时安全合并）
+    if (!state.goals || typeof state.goals !== 'object' || Array.isArray(state.goals)) state.goals = { dailyMin: 120 };
+    if (!Number.isFinite(state.goals.dailyMin) || state.goals.dailyMin < 0) state.goals.dailyMin = 120;
+    if (!state.points || typeof state.points !== 'object' || Array.isArray(state.points)) state.points = { rewards: [], spends: [] };
+    if (!Array.isArray(state.points.rewards)) state.points.rewards = [];
+    if (!Array.isArray(state.points.spends)) state.points.spends = [];
+    if (!state.achievements || typeof state.achievements !== 'object' || Array.isArray(state.achievements)) state.achievements = { unlockedAt: {} };
+    if (!state.achievements.unlockedAt || typeof state.achievements.unlockedAt !== 'object' || Array.isArray(state.achievements.unlockedAt)) state.achievements.unlockedAt = {};
     if (!state.quotes || typeof state.quotes !== 'object') state.quotes = {};
     if ((saved && saved.holidayTableVersion || 0) < HOLIDAY_TABLE_VERSION) {
       Object.keys(BUILTIN_HOLIDAYS).forEach((k) => { if (!(k in state.holidays)) state.holidays[k] = BUILTIN_HOLIDAYS[k]; });

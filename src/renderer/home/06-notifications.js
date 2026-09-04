@@ -74,6 +74,7 @@ function latestSkipReason() {
 
 function fireTransition(st) {
   if (!dutiesOwner()) return; // 铃声/通知只由职责窗口发（菜单栏端优先，桌面端兜底），面板是纯展示
+  if (gateActiveToday()) return; // 未打卡：相位照常展示，但不发通知不响铃
   // 提示音随横幅由系统播放；无横幅场景（通知关闭/浏览器模式）才本地播放
   const bannerWillSound = !!(bridge && state.notifications);
   if (!bannerWillSound) playSound();
@@ -96,4 +97,15 @@ function fireTransition(st) {
   } else if (st.phase === 'done') {
     notify(t('dayDoneNotify'), pickQuote(completedExtraSessionOf(st) ? 'extraEnd' : 'dayDone'), snd);
   }
+}
+
+/* 未打卡提醒：门禁中的职责窗口在当天首次出现"学习中"相位时提醒一次
+   （每次运行每天最多一条；时段开始前/全天结束时安静） */
+let nudgedCheckinFor = null;
+function maybeNudgeCheckin(st) {
+  if (!st || st.phase !== 'study') return;
+  if (nudgedCheckinFor === today.str) return;
+  if (StudyTimerShared.checkedIn(state, today.str)) return;
+  nudgedCheckinFor = today.str;
+  notify(t('nudgeCheckinTitle'), t('nudgeCheckinBody'), currentSysSound());
 }

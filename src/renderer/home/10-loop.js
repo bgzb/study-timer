@@ -206,11 +206,11 @@ function renderStats() {
   $('#statsText').innerHTML = t('stats')(stats.done, stats.total, stats.focusMin);
   const st = currentState(day);
   $('#skipBtn').disabled = !(st.phase === 'study' || st.phase === 'break');
-  // 当天已结束但总结未填写（也未跳过）时，抽屉里的手记图标挂小圆点提醒
+  // 当天已结束但总结未填写（也未跳过）时，抽屉里的手记图标挂小圆点提醒（未打卡的休息日不打扰）
   const journalItem = $('#toolDrawer .td-item[data-tool="journal"]');
   if (journalItem) journalItem.classList.toggle(
     'pending',
-    st.phase === 'done' && !state.journal[today.str] && !state.summaryDismissed[today.str]
+    st.phase === 'done' && !gateActiveToday() && !state.journal[today.str] && !state.summaryDismissed[today.str]
   );
 }
 
@@ -229,24 +229,28 @@ function tick() {
     recordTodayStats(86399);
     rebuildDay();
   }
+  const gated = gateActiveToday();
   const st = currentState(day);
   const key = stateKeyOf(st);
   if (key !== lastStateKey) {
     // lastStateKey === null 仅出现在页面首次加载：只建立基准、不补发通知
     // （中途打开应用不回放已过去的提醒）；此后任何相位变化都必须触发通知
-    if (lastStateKey !== null) fireTransition(st);
+    // 未打卡（门禁中）：相位照常流转展示，但不发音、不通知、不落盘
+    if (lastStateKey !== null && !gated) fireTransition(st);
     lastStateKey = key;
     setQuote(st);
-    recordTodayStats();
+    if (!gated) recordTodayStats();
   }
   // 兜底：每 60 秒落一次盘，保留进行中块的进度（中途退出应用也不丢）
-  if (Date.now() - lastStatsWrite >= 60000) {
+  if (!gated && Date.now() - lastStatsWrite >= 60000) {
     lastStatsWrite = Date.now();
     recordTodayStats();
   }
-  maybeAutoOpenSummary(st);
+  if (!gated) maybeAutoOpenSummary(st);
+  else if (dutiesOwner()) maybeNudgeCheckin(st);
   renderPhase(st);
   renderStats();
+  if (typeof renderCheckinGate === 'function') renderCheckinGate(gated);
   refreshStatsPanelIfStale();
   if (currentFillEl) {
     const b = currentFillEl.block;

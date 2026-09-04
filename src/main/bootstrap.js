@@ -27,6 +27,7 @@ let win = null;
 let tray = null;
 let barWin = null;
 let summaryWin = null;
+let dayWin = null;
 let lastBarHideAt = 0;
 let menuAppAlive = false;           // 桌面端用：菜单栏端是否在运行（职责互斥，避免双份提醒）
 let menuNapBlocker = 0;             // 菜单栏端的防休眠 blocker id
@@ -171,6 +172,9 @@ function createBarWindow() {
   barWin.on('blur', () => {
     // 延迟一拍再收起：若焦点立刻回到窗口（如原生 sheet 弹窗），不打扰
     setTimeout(() => {
+      const childWindowFocused = [dayWin, summaryWin].some((childWin) =>
+        childWin && !childWin.isDestroyed() && childWin.isFocused());
+      if (childWindowFocused) return;
       if (barWin && !barWin.isDestroyed() && !barWin.isFocused() && barWin.isVisible()) {
         lastBarHideAt = Date.now();
         barWin.hide();
@@ -327,8 +331,6 @@ ipcMain.on('summary:open', (_e, p) => openSummaryWindow(p && p.date, !!(p && p.f
 
 /* ==================== 每日时间块编辑窗口 ==================== */
 
-let dayWin = null;
-
 // 独立于主页/设置/总结的时段编辑页：查看与修改某天每个时段做的事、是否算专注、备注
 function openDayWindow(date) {
   const ds = validDateStr(date) ? date : todayDateStr();
@@ -415,7 +417,7 @@ ipcMain.handle('net:fetch-json', async (_e, url) => {
 ipcMain.on('notify', (_e, p) => {
   if (p) showNotification(p.title, p.body, p.sound);
 });
-// 测试通知用：等待真实投递结果 'shown'（原生横幅）/ 'fallback'（被拦，走了 osascript）/ 'blocked'（全被拦）
+// 测试通知用：等待投递结果 'shown'（原生横幅已确认）/ 其他（未确认或通道不可用）
 ipcMain.handle('notify:check', (_e, p) => {
   if (!p) return 'blocked';
   return new Promise((resolve) => {
@@ -440,20 +442,6 @@ function notifLog(msg) {
   } catch (e) {}
 }
 
-// osascript 兜底：原生通道被系统丢弃时仍能弹横幅（通知归到本 App 名下），并自带提示音
-function osascriptNotify(title, body, sound, cb) {
-  try {
-    const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    const snd = sound ? ` sound name "${esc(sound)}"` : ' sound name "Glass"';
-    const p = spawn('osascript', ['-e', `display notification "${esc(body)}" with title "${esc(title)}"${snd}`], { stdio: 'ignore' });
-    p.on('error', (e) => { notifLog('osascript spawn error: ' + (e && e.message)); try { if (cb) cb(false); } catch (e2) {} });
-    p.on('close', (code) => { notifLog('osascript exit=' + code); try { if (cb) cb(code === 0); } catch (e2) {} });
-  } catch (e) {
-    notifLog('osascript error: ' + (e && e.message));
-    try { if (cb) cb(false); } catch (e2) {}
-  }
-}
-
 function showNotification(title, body, sound, cb) {
   let settled = false;
   const done = (r) => {
@@ -462,8 +450,6 @@ function showNotification(title, body, sound, cb) {
     try { if (cb) cb(r); } catch (e) {}
   };
   notifLog('send: ' + title);
-  // 原生通道被系统静默丢弃时（未授权/签名身份变化）不抛异常，只是横幅不出现，
-  // 因此靠 'show' 事件确认投递，超时未确认即降级 osascript
   try {
     if (Notification.isSupported()) {
       const opts = { title: String(title || ''), body: String(body || ''), silent: !sound };
@@ -473,17 +459,20 @@ function showNotification(title, body, sound, cb) {
       n.on('click', () => (MENU_APP ? toggleBarWindow() : showWin()));
       n.on('show', () => { notifLog('native shown'); done('shown'); });
       n.show();
+      // macOS 上 'show' 事件偶发丢失（横幅已弹出但不触发），且无法与"真被拦截"区分，
+      // 因此只把它作为测试按钮的反馈信号，不再据此降级 osascript——否则同一条通知会弹两遍
+      // （第二条归到"脚本编辑器"名下，点击也无响应）。
       setTimeout(() => {
         if (settled) return;
-        notifLog('native banner not confirmed, falling back to osascript');
-        osascriptNotify(title, body, sound, (ok) => done(ok ? 'fallback' : 'blocked'));
+        notifLog('native show event unconfirmed');
+        done('unconfirmed');
       }, 1500);
       return;
     }
   } catch (e) {
     notifLog('native error: ' + (e && e.message));
   }
-  osascriptNotify(title, body, sound, (ok) => done(ok ? 'fallback' : 'blocked'));
+  done('unsupported');
 }
 
 // 首次启动主动发一条注册通知：让应用出现在 系统设置→通知 列表里并触发授权弹窗（只做一次）

@@ -254,15 +254,13 @@ $('#volRange').addEventListener('input', (e) => {
 $('#volRange').addEventListener('change', () => playSound());
 $('#testNotifyBtn').addEventListener('click', () => {
   const bannerWillSound = !!(bridge && state.notifications);
-  // App 内：等主进程的真实投递结果再反馈，不再静默（shown=原生横幅；fallback=被拦走了脚本兜底；blocked=全被拦）
+  // App 内：等主进程的真实投递结果再反馈，不再静默（shown=原生横幅已确认；其余=未确认，可能被系统拦截）
   if (bridge && bridge.notifyCheck && state.notifications) {
     const btn = $('#testNotifyBtn');
     btn.disabled = true;
     bridge.notifyCheck(t('appName'), t('testNotifyBody')).then((r) => {
       btn.disabled = false;
-      const msg = r === 'shown' ? t('testNotifyOk')
-        : r === 'fallback' ? t('testNotifyFallback')
-        : t('testNotifyBlocked');
+      const msg = r === 'shown' ? t('testNotifyOk') : t('testNotifyBlocked');
       $('#permStatus').textContent = t('notifStatusPrefix') + msg;
     });
     return;
@@ -391,14 +389,16 @@ $('#restartBtn').addEventListener('click', () => {
 
 $('#exportBtn').addEventListener('click', () => {
   const data = {
-    app: 'study-timer', version: 2, exportedAt: new Date().toISOString(),
+    app: 'study-timer', version: 4, exportedAt: new Date().toISOString(),
     schedules: state.schedules, holidays: state.holidays, makeup: state.makeup,
     quotes: state.quotes, notifications: state.notifications,
     sound: state.sound, volume: state.volume,
     skips: state.skips, override: state.override, dailyStats: state.dailyStats,
     extra: state.extra || {},
     blocks: state.blocks || {},
-    journal: state.journal || {}, summaryDismissed: state.summaryDismissed || {}
+    journal: state.journal || {}, summaryDismissed: state.summaryDismissed || {},
+    goals: state.goals || {}, points: state.points || {}, achievements: state.achievements || {},
+    checkins: state.checkins || {}, gateStart: state.gateStart || ''
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -432,6 +432,20 @@ $('#importFile').addEventListener('change', (e) => {
       if (data.blocks) state.blocks = data.blocks;
       if (data.journal) state.journal = data.journal;
       if (data.summaryDismissed) state.summaryDismissed = data.summaryDismissed;
+      // v3 追加字段：v2 备份缺省时保留现有值（不覆盖为空）
+      if (data.goals && typeof data.goals === 'object' && Number.isFinite(data.goals.dailyMin)) state.goals = { dailyMin: data.goals.dailyMin };
+      if (data.points && typeof data.points === 'object') {
+        state.points = {
+          rewards: Array.isArray(data.points.rewards) ? data.points.rewards : [],
+          spends: Array.isArray(data.points.spends) ? data.points.spends : []
+        };
+      }
+      if (data.achievements && data.achievements.unlockedAt && typeof data.achievements.unlockedAt === 'object') {
+        state.achievements = { unlockedAt: data.achievements.unlockedAt };
+      }
+      // v4 追加字段：打卡门禁记录（缺省保留现有值）
+      if (data.checkins && typeof data.checkins === 'object' && !Array.isArray(data.checkins)) state.checkins = data.checkins;
+      if (typeof data.gateStart === 'string' && data.gateStart) state.gateStart = data.gateStart;
       saveState();
       rebuildDay();
       openSettings();
@@ -449,6 +463,7 @@ $('#wipeBtn').addEventListener('click', () => {
   try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(BAR_THEME_KEY); } catch (e) {}
   // 就地重置（两种窗口通用；bar 面板不能整页 reload）
   state = defaultState();
+  state.gateStart = getToday().str; // 门禁从重置当天起继续生效
   saveState();
   applyI18n();
   rebuildDay();

@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('studyTimer', {
   playSound: (file, volume) => ipcRenderer.send('sound:play', { file, volume }),
   openNotificationSettings: () => ipcRenderer.send('sysprefs:notifications'),
   notify: (title, body, sound) => ipcRenderer.send('notify', { title, body, sound }),
-  // 测试通知用：返回 'shown' / 'fallback' / 'blocked'（等待真实投递结果）
+  // 测试通知用：返回 'shown'（已确认投递）或其他（未确认），等待真实投递结果
   notifyCheck: (title, body, sound) => ipcRenderer.invoke('notify:check', { title, body, sound }),
   // 共享状态（两个 App 经主进程读写共享 JSON 文件，跨 App 同步）
   loadAllSync: () => ipcRenderer.sendSync('state:load-sync'),

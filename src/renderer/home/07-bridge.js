@@ -12,7 +12,11 @@ function dutiesOwner() { return !BAR_MODE && duties; }
 function updateTray(st) {
   if (!bridge || !dutiesOwner()) return;
   let title = '--:--', tip = t('appName');
-  if (st.phase === 'study' || st.phase === 'break') {
+  if (gateActiveToday()) {
+    // 未打卡：托盘明示今天还没开始，点开面板即可打卡
+    title = t('trayGated');
+    tip = t('trayGatedTip');
+  } else if (st.phase === 'study' || st.phase === 'break') {
     title = fmtCountdown(st.block.effEnd - nowSeconds());
     tip = (st.phase === 'study' ? t('studying') + ' · ' : t('breakTime') + ' · ') + blockRangeText(st.block);
   } else if (st.phase === 'gap') {

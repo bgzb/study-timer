@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>学习计时</title>
 <link rel="stylesheet" href="src/renderer/styles/home.css">
+<link rel="stylesheet" href="src/renderer/styles/stats.css">
 </head>
 <body>
 
@@ -21,6 +22,26 @@
     <button data-mode="weekend" data-i18n="weekend">周末</button>
     <button data-mode="holiday" data-i18n="holiday">节假日</button>
   </div>
+
+  <!-- 每日打卡门禁：未打卡时显示，点"开始今天"起当天才计专注时间（19-checkin.js） -->
+  <section id="checkinCard" class="hidden">
+    <div class="ck-head">
+      <span class="ck-ic" data-icon="time"></span>
+      <div>
+        <div class="ck-title" data-i18n="ckTitle">今天还没开始计时</div>
+        <div class="ck-desc" data-i18n="ckDesc">不打卡就不计专注时间——休息日不打扰，学习日点一下开始。</div>
+      </div>
+    </div>
+    <div class="ck-actions">
+      <button id="ckStartBtn" data-i18n="ckStart">开始今天</button>
+      <button id="ckBackfillBtn" data-i18n="ckBackfill">我今天更早就开始了</button>
+    </div>
+    <div id="ckBackfillRow" class="hidden">
+      <label for="ckFromInput" data-i18n="ckFromLabel">起算时刻</label>
+      <input type="time" id="ckFromInput" step="60">
+      <button id="ckFromConfirm" data-i18n="ckFromConfirm">从此刻开始计</button>
+    </div>
+  </section>
 
   <section id="phaseCard" class="ph-study">
     <div id="phaseLabel"><span class="phase-icon" data-icon="study"></span><span class="phase-text">学习中</span></div>
@@ -229,22 +250,33 @@
   </div>
 </div>
 
-<!-- 学习统计 -->
+<!-- 学习统计：五视图（总览/趋势/热力/洞察/成就）+ 日详情/报告滑入层 -->
 <div id="statsOverlay">
   <div id="statsPanel">
     <div id="statsHead">
       <h2 data-i18n="statsTitle">学习统计</h2>
+      <div class="stHeadChips">
+        <span class="stHChip" id="stStreakChip"></span>
+        <span class="stHChip pts" id="stPtsChip" data-act="goto-awards"></span>
+      </div>
       <button id="closeStats" aria-label="关闭"><span data-icon="close"></span></button>
     </div>
     <div id="statsSeg">
-      <button data-range="today" class="active" data-i18n="stats_today">今日</button>
-      <button data-range="week" data-i18n="stats_week">近7天</button>
-      <button data-range="month" data-i18n="stats_month">当月</button>
-      <button data-range="year" data-i18n="stats_year">今年</button>
+      <button data-range="overview" class="active" data-i18n="stats_overview">总览</button>
+      <button data-range="trend" data-i18n="stats_trend">趋势</button>
+      <button data-range="heat" data-i18n="stats_heat">热力</button>
+      <button data-range="insights" data-i18n="stats_insights">洞察</button>
+      <button data-range="awards" data-i18n="stats_awards">成就</button>
     </div>
     <div id="statsBody"></div>
+    <!-- 滑入层：日详情 / 报告（13-stats-awards.js 渲染） -->
+    <div id="statsLayer">
+      <div id="statsLayerHead"></div>
+      <div id="statsLayerBody"></div>
+    </div>
   </div>
 </div>
+<div id="statsTip" aria-hidden="true"></div>
 
 <!-- 总结手记 -->
 <div id="journalOverlay">
@@ -294,6 +326,9 @@
 <script src="src/renderer/shared/timeline-model.js"></script>
 <script src="src/renderer/shared/theme-model.js"></script>
 <script src="src/renderer/shared/stats-model.js"></script>
+<script src="src/renderer/shared/session-model.js"></script>
+<script src="src/renderer/shared/stats-insights.js"></script>
+<script src="src/renderer/shared/svg-charts.js"></script>
 <script src="src/renderer/shared/skip-model.js"></script>
 <script src="src/renderer/shared/quote-model.js"></script>
 <script src="src/renderer/shared/tool-registry.js"></script>
@@ -313,11 +348,14 @@
 <script src="src/renderer/home/11-interactions.js"></script>
 <script src="src/renderer/home/12-settings.js"></script>
 <script src="src/renderer/home/13-stats.js"></script>
+<script src="src/renderer/home/13-stats-views.js"></script>
+<script src="src/renderer/home/13-stats-awards.js"></script>
 <script src="src/renderer/home/14-journal.js"></script>
 <script src="src/renderer/home/15-onboarding.js"></script>
 <script src="src/renderer/home/16-bootstrap.js"></script>
 <script src="src/renderer/home/17-tool-drawer.js"></script>
 <script src="src/renderer/home/18-holiday-sync.js"></script>
+<script src="src/renderer/home/19-checkin.js"></script>
 
 </body>
 </html>

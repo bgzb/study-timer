@@ -19,7 +19,7 @@ const T = {
     lbGood: '今天做得好的', phGood: '哪些事推进顺利？哪些瞬间值得记住？',
     lbImprove: '可以改进的', phImprove: '哪里分心了？下次遇到同样情况怎么应对？',
     lbPlan: '明天想做的', phPlan: '给明天的自己留一句话或一个小目标…',
-    later: '稍后再说', saveNew: '保存今日总结', saveEdit: '保存修改',
+    later: '稍后再说', saveNew: '保存今日总结', saveEdit: '保存修改', close: '关闭',
     saved: '已保存，明天见',
     weekend: ['日', '一', '二', '三', '四', '五', '六'],
     presetTags: ['专注', '高效', '拖延', '疲惫', '熬夜', '运动', '阅读', '复盘']
@@ -40,7 +40,7 @@ const T = {
     lbGood: 'What went well', phGood: 'What moved forward? Any moments worth keeping?',
     lbImprove: 'To improve', phImprove: 'Where did focus slip? How to handle it next time?',
     lbPlan: 'For tomorrow', phPlan: 'Leave a note or a small goal for tomorrow…',
-    later: 'Not now', saveNew: 'Save review', saveEdit: 'Save changes',
+    later: 'Not now', saveNew: 'Save review', saveEdit: 'Save changes', close: 'Close',
     saved: 'Saved — see you tomorrow',
     weekend: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
     presetTags: ['Focused', 'Productive', 'Procrastinated', 'Tired', 'Late night', 'Exercise', 'Reading', 'Review']
@@ -92,6 +92,8 @@ function renderChrome() {
   $('#lbImprove').textContent = tt('lbImprove'); $('#improve').placeholder = tt('phImprove');
   $('#lbPlan').textContent = tt('lbPlan'); $('#planT').placeholder = tt('phPlan');
   $('#laterBtn').textContent = tt('later');
+  $('#closeBtn').title = tt('close');
+  $('#closeBtn').setAttribute('aria-label', tt('close'));
   $('#savedTxt').textContent = tt('saved');
   $('#editDayBtn').innerHTML = iconText('edit', tt('editDayBtn'));
   if (iconSvg) {
@@ -248,6 +250,8 @@ function updateSaveBtn() {
 /* ==================== 保存 / 稍后 ==================== */
 
 let busy = false;
+
+$('#closeBtn').addEventListener('click', () => { window.close(); });
 
 $('#saveBtn').addEventListener('click', () => {
   if (busy) return;

@@ -15,7 +15,7 @@ const T = {
     phActBreak: '默认：休息（可填 小憩、散步…）',
     phNote: '补充说明…',
     focusLabel: '算专注', focusOffLabel: '不算专注',
-    reset: '还原默认', save: '保存', saved: '已保存',
+    reset: '还原默认', save: '保存', close: '关闭', saved: '已保存',
     confirmReset: '还原该日全部时间块编辑（做的事/算专注/备注）？',
     weekend: ['日', '一', '二', '三', '四', '五', '六'],
     durM: (m) => m + ' 分钟'
@@ -33,7 +33,7 @@ const T = {
     phActBreak: 'Default: break (e.g. nap, walk…)',
     phNote: 'Extra notes…',
     focusLabel: 'Counts as focus', focusOffLabel: 'Not focus',
-    reset: 'Reset', save: 'Save', saved: 'Saved',
+    reset: 'Reset', save: 'Save', close: 'Close', saved: 'Saved',
     confirmReset: 'Reset all block edits (activity/focus/note) for this day?',
     weekend: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
     durM: (m) => m + 'm'
@@ -72,7 +72,9 @@ const settleAt = isToday ? nowSeconds() : 86399;
 
 function editOf(b) { return dayEdits[b.key] || null; }
 function focusFlagOf(b) { return shared.focusFlagOf(b, dayEdits); }
-function computeRecap(edits) { return shared.computeRecap(built, edits, settleAt); }
+// 打卡门禁同口径：该日起算秒（未打卡且门禁启用后的日子整天不计）
+const countFrom = shared.countFromOf(state, date);
+function computeRecap(edits) { return shared.computeRecap(built, edits, settleAt, countFrom); }
 
 /* ==================== 渲染 ==================== */
 
@@ -89,6 +91,8 @@ function renderChrome() {
   $('#titleLine .title-text').textContent = tt('title');
   $('#resetBtn').textContent = tt('reset');
   $('#saveBtn').textContent = tt('save');
+  $('#closeBtn').title = tt('close');
+  $('#closeBtn').setAttribute('aria-label', tt('close'));
   $('#savedTxt').textContent = tt('saved');
   if (iconSvg) {
     document.querySelectorAll('span[data-icon]').forEach((slot) => {
@@ -233,8 +237,11 @@ function collectEdits() {
 }
 
 function recomputeDaily(edits) {
-  return shared.snapshot(built, { blocks: { [date]: edits }, skips: { [date]: daySkips } }, settleAt, date);
+  // state 在保存前会被重读，起算秒以最新状态为准（页面开着时可能在别处打了卡）
+  return shared.snapshot(built, { blocks: { [date]: edits }, skips: { [date]: daySkips } }, settleAt, date, shared.countFromOf(state, date));
 }
+
+$('#closeBtn').addEventListener('click', () => { window.close(); });
 
 $('#saveBtn').addEventListener('click', () => {
   if (busy) return;

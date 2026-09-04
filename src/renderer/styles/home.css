@@ -167,6 +167,56 @@
     border-radius: 50%; background: var(--study); border: 2px solid var(--card2);
   }
 
+  /* ===== 打卡门禁 ===== */
+  #checkinCard {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 18px 20px 16px;
+  }
+  #checkinCard.hidden { display: none; }
+  #checkinCard .ck-head { display: flex; gap: 12px; align-items: flex-start; }
+  #checkinCard .ck-ic {
+    flex: 0 0 auto; width: 38px; height: 38px; border-radius: 12px;
+    background: var(--wait-bg); color: var(--wait);
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  #checkinCard .ck-title { font-size: 15px; font-weight: 600; color: var(--wait); }
+  #checkinCard .ck-desc { font-size: 12px; color: var(--text2); line-height: 1.6; margin-top: 3px; }
+  #checkinCard .ck-actions {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 13px;
+  }
+  #ckStartBtn {
+    flex: 1; min-width: 130px; border: none; cursor: pointer; font-family: inherit;
+    background: var(--study); color: #fff; font-size: 14px; font-weight: 600;
+    padding: 10px 16px; border-radius: 12px;
+    transition: filter 0.15s;
+  }
+  #ckStartBtn:hover { filter: brightness(1.06); }
+  #ckBackfillBtn {
+    border: none; background: none; font-family: inherit; font-size: 12px;
+    color: var(--text2); cursor: pointer; padding: 6px 8px; border-radius: 8px;
+    text-decoration: underline dotted; text-underline-offset: 3px;
+  }
+  #ckBackfillBtn:hover { color: var(--text); background: var(--card2); }
+  #ckBackfillRow {
+    display: flex; align-items: center; gap: 8px; margin-top: 11px;
+    background: var(--card2); border-radius: 10px; padding: 8px 10px;
+  }
+  #ckBackfillRow.hidden { display: none; }
+  #ckBackfillRow label { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  #ckFromInput {
+    flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); color: var(--text); font-family: inherit; font-size: 13px; padding: 6px 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  #ckFromConfirm {
+    border: 1px solid var(--study-soft); background: var(--study-bg); color: var(--study);
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px;
+    border-radius: 8px; cursor: pointer; white-space: nowrap;
+  }
+  #ckFromConfirm:hover { filter: brightness(0.97); }
+  body.bar #checkinCard { padding: 15px 16px 13px; }
+  body.bar #ckStartBtn { padding: 9px 14px; }
+
   /* ===== 状态卡 ===== */
   #phaseCard {
     background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);

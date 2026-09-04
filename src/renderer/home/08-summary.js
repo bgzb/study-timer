@@ -7,6 +7,7 @@ let summaryAutoOpenedFor = null; // 本次运行内已自动弹过的日期，�
 function maybeAutoOpenSummary(st) {
   if (!dutiesOwner() || !bridge || !bridge.openSummary) return; // 面板纯展示；浏览器模式无桥
   if (!st || st.phase !== 'done') return;
+  if (gateActiveToday()) return; // 未打卡的休息日不算"这一天结束"，不弹总结
   const key = today.str;
   if ((state.journal && state.journal[key]) || (state.summaryDismissed && state.summaryDismissed[key])) return;
   if (summaryAutoOpenedFor === key) return;

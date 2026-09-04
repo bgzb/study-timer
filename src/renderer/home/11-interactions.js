@@ -136,8 +136,29 @@ $('#extraConfirm').addEventListener('click', () => {
   extraTitleInput.value = ''; extraError.textContent = '';
 });
 
+/* 批量收工（阶梯休息券用）：把今天所有未结束的学习块标记为跳过。
+   进行中的块截到当前时刻，未来块整块跳过（at = 原定开始，贡献 0 分钟）；
+   已有跳过记录的块幂等跳过。返回写入条数（0 = 没有剩余学习块）。 */
+function skipRemainingStudyBlocks(reason) {
+  if (!state.skips) state.skips = {};
+  const list = state.skips[today.str] || (state.skips[today.str] = []);
+  const now = nowSeconds();
+  let n = 0;
+  for (const b of day.blocks) {
+    if (b.type !== 'study' || b.effEnd <= now) continue;
+    if (list.find((x) => x.key === b.key)) continue;
+    list.push({
+      key: b.key, at: Math.max(b.start, now), reason,
+      type: b.type, start: b.start, end: b.end,
+    });
+    n++;
+  }
+  if (n) { rebuildDay(); recordTodayStats(); }
+  return n;
+}
+
 /* 跳过动作 */
-  $('#skipBtn').addEventListener('click', () => {
+$('#skipBtn').addEventListener('click', () => {
   const st = currentState(day);
   if (st.phase !== 'study' && st.phase !== 'break') return;
   openSkipReason(st);
