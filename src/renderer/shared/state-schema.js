@@ -22,7 +22,7 @@
     holiday: [{ name: '上午', start: '09:00', seq: [40, 10, 40] }, { name: '下午', start: '14:00', seq: [40, 10, 40, 10, 40] }, { name: '晚上', start: '20:00', seq: [40, 10, 40] }]
   };
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
-  function defaultState() { return { language: 'zh', schedules: clone(DEFAULT_SCHEDULES), holidays: Object.assign({}, BUILTIN_HOLIDAYS), makeup: Object.assign({}, BUILTIN_MAKEUP), holidayTableVersion: HOLIDAY_TABLE_VERSION, holidaySync: {}, quotes: {}, notifications: true, sound: 'chime', volume: 0.7, override: {}, skips: {}, extra: {}, dailyStats: {}, blocks: {}, journal: {}, summaryDismissed: {}, enableAck: false, goals: { dailyMin: 120 }, points: { rewards: [], spends: [] }, achievements: { unlockedAt: {} }, checkins: {}, gateStart: '' }; }
+  function defaultState() { return { language: 'zh', schedules: clone(DEFAULT_SCHEDULES), holidays: Object.assign({}, BUILTIN_HOLIDAYS), makeup: Object.assign({}, BUILTIN_MAKEUP), holidayTableVersion: HOLIDAY_TABLE_VERSION, holidaySync: {}, quotes: {}, notifications: true, sound: 'chime', volume: 0.7, override: {}, skips: {}, extra: {}, dailyStats: {}, blocks: {}, journal: {}, summaryDismissed: {}, enableAck: false, goals: { dailyMin: 120 }, points: { rewards: [], spends: [] }, achievements: { unlockedAt: {}, points: {} }, checkins: {}, gateStart: '' }; }
   function ensureState(saved) {
     const state = defaultState();
     if (saved && typeof saved === 'object' && !Array.isArray(saved)) Object.assign(state, saved);
@@ -35,8 +35,9 @@
     if (!state.points || typeof state.points !== 'object' || Array.isArray(state.points)) state.points = { rewards: [], spends: [] };
     if (!Array.isArray(state.points.rewards)) state.points.rewards = [];
     if (!Array.isArray(state.points.spends)) state.points.spends = [];
-    if (!state.achievements || typeof state.achievements !== 'object' || Array.isArray(state.achievements)) state.achievements = { unlockedAt: {} };
+    if (!state.achievements || typeof state.achievements !== 'object' || Array.isArray(state.achievements)) state.achievements = { unlockedAt: {}, points: {} };
     if (!state.achievements.unlockedAt || typeof state.achievements.unlockedAt !== 'object' || Array.isArray(state.achievements.unlockedAt)) state.achievements.unlockedAt = {};
+    if (!state.achievements.points || typeof state.achievements.points !== 'object' || Array.isArray(state.achievements.points)) state.achievements.points = {};
     if (!state.quotes || typeof state.quotes !== 'object') state.quotes = {};
     if ((saved && saved.holidayTableVersion || 0) < HOLIDAY_TABLE_VERSION) {
       Object.keys(BUILTIN_HOLIDAYS).forEach((k) => { if (!(k in state.holidays)) state.holidays[k] = BUILTIN_HOLIDAYS[k]; });

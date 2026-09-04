@@ -10,23 +10,50 @@ let stArmTimer = null;     // 兑换两步确认的复位计时器
 let stReportData = null;   // 报告层当前文案（复制用）
 const statsLayer = $('#statsLayer');
 
-/* ---------- 成就解锁检测（打开面板/专注分钟变化时调用，首次达成落盘日期） ---------- */
+/* ---------- 成就解锁检测（tick/状态同步/打开面板时调用）：落盘日期、入账积分、发通知 ----------
+   首次达成写 unlockedAt 并即时加分；历史已解锁但未入账积分的旧数据在此幂等补发（静默，不发通知） */
 function syncAchievements() {
   const fresh = [];
   const list = StudyTimerShared.checkAchievements(state);
-  if (!state.achievements || typeof state.achievements !== 'object') state.achievements = { unlockedAt: {} };
+  if (!state.achievements || typeof state.achievements !== 'object') state.achievements = { unlockedAt: {}, points: {} };
   if (!state.achievements.unlockedAt || typeof state.achievements.unlockedAt !== 'object') state.achievements.unlockedAt = {};
+  if (!state.achievements.points || typeof state.achievements.points !== 'object') state.achievements.points = {};
+  let pointsChanged = false;
   for (const a of list) {
     if (a.done && !state.achievements.unlockedAt[a.id]) {
       state.achievements.unlockedAt[a.id] = today.str;
       fresh.push(a.id);
     }
+    if ((state.achievements.unlockedAt[a.id] || a.done) && !state.achievements.points[a.id]) {
+      state.achievements.points[a.id] = a.pts;
+      pointsChanged = true;
+    }
   }
   if (fresh.length) {
     stFreshUnlocks = stFreshUnlocks.concat(fresh);
     saveState();
+    stNotifyAchievements(fresh, list);
+  } else if (pointsChanged) {
+    saveState();
   }
   return fresh;
+}
+/* 成就达成系统通知：单条带条件描述与积分；多条合并为一条报总数。
+   与相位通知同约定：只由职责窗口发送（窗口间先落盘者胜，职责窗口每分钟兜底同步） */
+function stNotifyAchievements(freshIds, list) {
+  if (!dutiesOwner()) return;
+  const byId = {};
+  list.forEach((a) => { byId[a.id] = a; });
+  if (freshIds.length === 1) {
+    const a = byId[freshIds[0]];
+    notify(tf('achNotifyTitle', t('ach_' + a.id)),
+      t('ach_' + a.id + '_d') + tf('achNotifyPts', a.pts), currentSysSound());
+  } else {
+    const joiner = state.language === 'en' ? ', ' : '、';
+    const total = freshIds.reduce((s, id) => s + (byId[id] ? byId[id].pts : 0), 0);
+    const names = freshIds.map((id) => '「' + t('ach_' + id) + '」').join(joiner);
+    notify(tf('achNotifyTitleN', freshIds.length), names + ' ' + tf('achNotifyPts', total), currentSysSound());
+  }
 }
 function stHasFreshUnlocks() {
   return stFreshUnlocks.length > 0 && !stAwardsSeen;
@@ -34,20 +61,15 @@ function stHasFreshUnlocks() {
 
 /* ---------- 成就视图 ---------- */
 function achIsMinBased(id) { return id.indexOf('total_') === 0 || id.indexOf('day_') === 0; }
-function achGoalLabel(a) {
-  if (achIsMinBased(a.id)) return tf('ach_goal_h', Math.round(a.goal / 60));
-  if (a.id.indexOf('streak_') === 0) return tf('ach_goal_d', a.goal);
-  return tf('ach_goal_c', a.goal);
-}
 function achProgressLabel(a) {
-  if (achIsMinBased(a.id)) return fmtMin(a.value) + ' / ' + tf('ach_goal_h', Math.round(a.goal / 60));
+  if (achIsMinBased(a.id)) return fmtMinShort(a.value) + ' / ' + tf('ach_goal_h', Math.round(a.goal / 60));
   if (a.id.indexOf('streak_') === 0) return a.value + '/' + a.goal + ' ' + t('dayUnit');
   return a.value + '/' + a.goal;
 }
 function renderAwardsView() {
   const SI = StudyTimerShared;
   stAwardsSeen = true;
-  const bal = SI.pointsBalance(state.dailyStats, state.points);
+  const bal = SI.pointsBalance(state.dailyStats, state.points, state.achievements);
   const pts = state.points || {};
   const rewards = Array.isArray(pts.rewards) ? pts.rewards : [];
   const spends = Array.isArray(pts.spends) ? pts.spends : [];
@@ -60,7 +82,7 @@ function renderAwardsView() {
   html += '<div class="stPtsHero">'
     + '<div class="ic">' + iconSvg('gift', { size: 22 }) + '</div>'
     + '<div><div class="v cu" data-to="' + bal.balance + '">0</div><div class="k">' + t('ptsBalance') + ' · ' + t('ptsRule') + '</div></div>'
-    + '<div class="sub">' + t('ptsEarned') + ' ' + bal.earned + '<br>' + t('ptsSpent') + ' ' + bal.spent + '</div>'
+    + '<div class="sub">' + t('ptsEarned') + ' ' + bal.earned + '<br>' + t('ptsAchEarned') + ' ' + bal.achEarned + '<br>' + t('ptsSpent') + ' ' + bal.spent + '</div>'
     + '</div>';
 
   html += '<div class="stGrid">';
@@ -124,7 +146,10 @@ function renderAwardsView() {
       const date = unlockedAt[a.id];
       const done = a.done || !!date;
       const pct = done ? 100 : Math.min(100, Math.round((a.progress / a.goal) * 100));
-      const tip = '<div class="tt-k">' + t('ach_' + a.id) + '</div><div class="tt-s">' + achGoalLabel(a)
+      // 悬浮提示：名称 / 达成条件描述 / 奖励积分（已达成附达成日期）
+      const tip = '<div class="tt-k">' + t('ach_' + a.id) + '</div>'
+        + '<div class="tt-d">' + t('ach_' + a.id + '_d') + '</div>'
+        + '<div class="tt-s"><span class="tt-p">+' + a.pts + '</span> ' + t('ptsUnit')
         + (done && date ? ' · ' + tf('ach_unlocked_on', date) : '') + '</div>';
       html += '<div class="stBadge' + (done ? '' : ' locked') + (stFreshUnlocks.indexOf(a.id) >= 0 ? ' fresh' : '') + '"'
         + ' style="--d:' + (i * 35) + 'ms" data-tip="' + escHtml(tip) + '">'
@@ -186,7 +211,7 @@ function openStatsDayLayer(dateStr) {
     html = '<div class="stEmptyCard">' + t('dlFuture') + '</div>';
   } else {
     html += '<div class="stSummary">'
-      + stCell(fmtMin(st ? st.focusMin : 0), t('statTotal'))
+      + stCell(fmtMinShort(st ? st.focusMin : 0), t('statTotal'))
       + stCell((st ? st.done : 0) + '/' + (st ? st.total : 0), t('statDoneBlocks'))
       + stCell(st ? st.skipped : 0, t('statSkipped'))
       + '</div>';
@@ -242,11 +267,11 @@ function openStatsReportLayer() {
 
   const delta = m.deltaPct === null ? '—' : (m.deltaPct >= 0 ? '+' : '') + m.deltaPct + '%';
   let html = '<div class="stReportMeta">'
-    + '<div class="m"><div class="v">' + fmtMin(m.totalMin) + '</div><div class="k">' + t('statTotal') + '</div></div>'
+    + '<div class="m"><div class="v">' + fmtMinShort(m.totalMin) + '</div><div class="k">' + t('statTotal') + '</div></div>'
     + '<div class="m"><div class="v">' + delta + '</div><div class="k">' + t('trDelta') + '</div></div>'
     + '<div class="m"><div class="v">' + m.studyDays + '/' + m.periodDays + '</div><div class="k">' + t('statStudyDays') + '</div></div>'
-    + '<div class="m"><div class="v">' + fmtMin(m.avgPerDay) + '</div><div class="k">' + t('statAvg') + '</div></div>'
-    + '<div class="m"><div class="v">' + (m.best ? fmtMin(m.best.min) : '—') + '</div><div class="k">' + t('statBestDay') + '</div></div>'
+    + '<div class="m"><div class="v">' + fmtMinShort(m.avgPerDay) + '</div><div class="k">' + t('statAvg') + '</div></div>'
+    + '<div class="m"><div class="v">' + (m.best ? fmtMinShort(m.best.min) : '—') + '</div><div class="k">' + t('statBestDay') + '</div></div>'
     + '<div class="m"><div class="v">' + (m.goalMin > 0 ? m.goalHit + '/' + m.periodDays : '—') + '</div><div class="k">' + t('rpMetaGoal') + '</div></div>'
     + '</div>';
   html += '<div class="stReportLines">' + r.lines.map((x) => '<div class="ln">' + x + '</div>').join('') + '</div>';
@@ -365,7 +390,7 @@ function statsViewAction(act, el) {
     case 'reward-redeem': {
       const r = findReward(el.dataset.id);
       if (!r) return true;
-      const bal = SI.pointsBalance(state.dailyStats, state.points);
+      const bal = SI.pointsBalance(state.dailyStats, state.points, state.achievements);
       if (bal.balance < r.cost) return true;
       if (el.dataset.arm !== '1') {
         // 两步确认：3 秒内再点一次才真正扣分
@@ -379,7 +404,7 @@ function statsViewAction(act, el) {
       if (!Array.isArray(state.points.spends)) state.points.spends = [];
       state.points.spends.push({ id: r.id, name: r.name, cost: r.cost, at: new Date().toISOString() });
       saveState();
-      stRedeemFlash = tf('redeemedFlash', r.name, SI.pointsBalance(state.dailyStats, state.points).balance);
+      stRedeemFlash = tf('redeemedFlash', r.name, SI.pointsBalance(state.dailyStats, state.points, state.achievements).balance);
       renderStatsPanel();
       setTimeout(() => {
         if (!stRedeemFlash) return;
@@ -389,7 +414,7 @@ function statsViewAction(act, el) {
       return true;
     }
     case 'rest-redeem': {
-      const rvBal = SI.pointsBalance(state.dailyStats, state.points);
+      const rvBal = SI.pointsBalance(state.dailyStats, state.points, state.achievements);
       const rv = SI.restVoucherState(state.points && state.points.spends, new Date());
       if (rvBal.balance < rv.price) return true;
       if (el.dataset.arm !== '1') {
@@ -407,7 +432,7 @@ function statsViewAction(act, el) {
       const skippedN = skipRemainingStudyBlocks(tf('restVoucherReason', rv.count + 1));
       saveState();
       tick();
-      let flash = tf('redeemedFlash', t('restVoucherName'), SI.pointsBalance(state.dailyStats, state.points).balance);
+      let flash = tf('redeemedFlash', t('restVoucherName'), SI.pointsBalance(state.dailyStats, state.points, state.achievements).balance);
       if (skippedN) flash += ' · ' + tf('restVoucherSkipped', skippedN);
       stRedeemFlash = flash;
       renderStatsPanel();

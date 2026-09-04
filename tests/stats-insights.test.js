@@ -150,13 +150,20 @@ test('dayTypeCompare honors holidays, makeup and override priority', () => {
   assert.equal(s.workday.totalMin, WEEK_TOTAL - 100);
 });
 
-test('pointsBalance derives from focus minutes minus spends', () => {
+test('pointsBalance derives from focus minutes plus achievement points minus spends', () => {
   const bal = insights.pointsBalance(dailyStats, { rewards: [], spends: [{ name: '电影', cost: 200 }, { name: 'x', cost: 'bad' }] });
   assert.equal(bal.earned, WEEK_TOTAL);
   assert.equal(bal.spent, 200);
   assert.equal(bal.balance, WEEK_TOTAL - 200);
+  const withAch = insights.pointsBalance(dailyStats,
+    { rewards: [], spends: [{ name: '电影', cost: 200 }] },
+    { unlockedAt: { total_10h: '2026-08-30' }, points: { total_10h: 60, bad: -5, junk: 'x' } });
+  assert.equal(withAch.achEarned, 60); // 非法/负数积分忽略
+  assert.equal(withAch.earned, WEEK_TOTAL + 60);
+  assert.equal(withAch.balance, WEEK_TOTAL + 60 - 200);
   const empty = insights.pointsBalance({}, null);
-  assert.deepEqual({ earned: empty.earned, spent: empty.spent, balance: empty.balance }, { earned: 0, spent: 0, balance: 0 });
+  assert.deepEqual({ earned: empty.earned, achEarned: empty.achEarned, spent: empty.spent, balance: empty.balance },
+    { earned: 0, achEarned: 0, spent: 0, balance: 0 });
 });
 
 test('streaksOf computes current and best runs', () => {
@@ -223,6 +230,30 @@ test('buildReport composes localized lines from metrics', () => {
   assert.ok(en.lines.length >= 3);
 });
 
+test('checkAchievements carries pts reward through the result', () => {
+  const list = insights.checkAchievements({ dailyStats, journal });
+  const by = (id) => list.find((x) => x.id === id);
+  assert.equal(by('total_10h').pts, 60);
+  assert.equal(by('streak_3').pts, 60);
+});
+
+test('achievement pts are positive integers and grow non-linearly within each family', () => {
+  const byId = {};
+  for (const a of insights.ACHIEVEMENTS) {
+    assert.ok(Number.isInteger(a.pts) && a.pts >= 50, a.id + ' pts 应为不小于 50 的整数');
+    byId[a.id] = a;
+  }
+  // 同族递增且增量非线性（高阶成就积分显著高于低阶）
+  const family = ['total_10h', 'total_50h', 'total_100h', 'total_300h', 'total_1000h'];
+  for (let i = 1; i < family.length; i++) {
+    assert.ok(byId[family[i]].pts > byId[family[i - 1]].pts * 2, family[i] + ' 积分应超过前一级的 2 倍');
+  }
+  assert.ok(byId.streak_100.pts >= 50 * 10); // 最难的坚持成就与简单成就拉开量级
+  assert.ok(byId.total_1000h.pts >= 50 * 10);
+  // 简单成就只给几十分
+  assert.ok(byId.total_10h.pts < 100 && byId.journal_10.pts < 100 && byId.streak_3.pts < 100);
+});
+
 test('legacy state without new fields loads intact and gains defaults', () => {
   const legacy = {
     language: 'en',
@@ -239,12 +270,13 @@ test('legacy state without new fields loads intact and gains defaults', () => {
   // 新字段补默认
   assert.deepEqual(s.goals, { dailyMin: 120 });
   assert.deepEqual(s.points, { rewards: [], spends: [] });
-  assert.deepEqual(s.achievements, { unlockedAt: {} });
+  assert.deepEqual(s.achievements, { unlockedAt: {}, points: {} });
   // 部分残缺的新字段也能修复
-  const partial = schema.ensureState({ goals: {}, points: { rewards: 'bad' }, achievements: { unlockedAt: [] } });
+  const partial = schema.ensureState({ goals: {}, points: { rewards: 'bad' }, achievements: { unlockedAt: [], points: 'bad' } });
   assert.equal(partial.goals.dailyMin, 120);
   assert.deepEqual(partial.points.rewards, []);
   assert.deepEqual(partial.achievements.unlockedAt, {});
+  assert.deepEqual(partial.achievements.points, {});
 });
 
 test('extraTrend counts sessions by month', () => {

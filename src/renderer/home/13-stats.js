@@ -26,6 +26,13 @@ function fmtMin(min) {
   const h = Math.floor(min / 60), m = min % 60;
   return h > 0 ? t('durH')(h, m) : t('durM')(m);
 }
+/* 紧凑时长（12小时34分 / 12h 34m）：统计卡片、均值线、tooltip 等易被压缩的位置用，
+   保证 "X小时X分" 永不在数字中间折行 */
+function fmtMinShort(min) {
+  min = Math.round(min);
+  const h = Math.floor(min / 60), m = min % 60;
+  return h > 0 ? t('durHs')(h, m) : t('durMs')(m);
+}
 function stCell(v, k) {
   return '<div class="cell"><div class="v">' + v + '</div><div class="k">' + k + '</div></div>';
 }
@@ -66,7 +73,7 @@ function renderStatsPanel(opts) {
   const st = dayStatOf(today.str);
   lastPanelFocus = st ? st.focusMin : -1;
   const streak = calcStreak();
-  const bal = StudyTimerShared.pointsBalance(state.dailyStats, state.points);
+  const bal = StudyTimerShared.pointsBalance(state.dailyStats, state.points, state.achievements);
   // 头部 chips：连续天数 + 积分余额
   const streakChip = $('#stStreakChip');
   if (streakChip) {

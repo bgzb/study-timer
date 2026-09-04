@@ -15,7 +15,7 @@ function stDateLong(key) {
   return stDateShort(key) + ' · ' + (state.language === 'en' ? WEEK_EN[d.getDay()].slice(0, 3) : '周' + WEEK_ZH[d.getDay()]);
 }
 function stDayTooltip(key, st) {
-  let html = '<div class="tt-k">' + stDateLong(key) + '</div><div class="tt-v">' + fmtMin(st ? st.focusMin : 0) + '</div>';
+  let html = '<div class="tt-k">' + stDateLong(key) + '</div><div class="tt-v">' + fmtMinShort(st ? st.focusMin : 0) + '</div>';
   if (st) html += '<div class="tt-s">' + t('statDoneBlocks') + ' ' + st.done + '/' + st.total
     + (st.skipped ? ' · ' + t('statSkipped') + ' ' + st.skipped : '') + '</div>';
   const j = (state.journal || {})[key];
@@ -54,7 +54,7 @@ function stDynamicTip(el) {
   if (el.classList.contains('stc-sc-dot') && el.dataset.key) {
     const st = dayStatOf(el.dataset.key);
     return '<div class="tt-k">' + stDateLong(el.dataset.key) + '</div>'
-      + '<div class="tt-v">' + fmtMin(st ? st.focusMin : 0) + '</div>'
+      + '<div class="tt-v">' + fmtMinShort(st ? st.focusMin : 0) + '</div>'
       + '<div class="tt-s">' + t('jRating') + ' ' + el.dataset.x + '/5</div>';
   }
   return '';
@@ -85,7 +85,7 @@ function renderOverviewView() {
   const rate = total > 0 ? Math.round((done / total) * 100) : 0;
   const goal = (state.goals && state.goals.dailyMin) || 0;
   const streak = calcStreak();
-  const bal = SI.pointsBalance(state.dailyStats, state.points);
+  const bal = SI.pointsBalance(state.dailyStats, state.points, state.achievements);
   const goalPct = goal > 0 ? Math.min(1, focus / goal) : 0;
 
   let html = '<div class="stHero">'
@@ -162,7 +162,7 @@ function stTrendChart(series) {
   items.forEach((it, i) => {
     const pct = Math.max(2, Math.round((it.min / max) * 100));
     const tip = isYear
-      ? '<div class="tt-k">' + tf('trMonthLabel', Number(it.key.slice(0, 4)), it.m) + '</div><div class="tt-v">' + fmtMin(it.min) + '</div><div class="tt-s">' + t('statStudyDays') + ' ' + it.days + '</div>'
+      ? '<div class="tt-k">' + tf('trMonthLabel', Number(it.key.slice(0, 4)), it.m) + '</div><div class="tt-v">' + fmtMinShort(it.min) + '</div><div class="tt-s">' + t('statStudyDays') + ' ' + it.days + '</div>'
       : stDayTooltip(it.key, dayStatOf(it.key));
     const act = it.future ? '' : (isYear ? ' data-act="trend-month" data-anchor="' + it.key + '-01"' : ' data-act="day" data-date="' + it.key + '"');
     const isNow = isYear ? (it.m === today.m && Number(it.key.slice(0, 4)) === today.y) : it.key === today.str;
@@ -181,7 +181,7 @@ function stTrendChart(series) {
   let avgLine = '', maLine = '';
   if (!isYear) {
     const avgPct = Math.max(0, Math.min(100, (series.avgPerDay / max) * 100));
-    avgLine = '<div class="stAvgLine" style="bottom:' + avgPct + '%"><span>' + fmtMin(series.avgPerDay) + '</span></div>';
+    avgLine = '<div class="stAvgLine" style="bottom:' + avgPct + '%"><span>' + fmtMinShort(series.avgPerDay) + '</span></div>';
   }
   if (series.kind === 'month') {
     maLine = '<div class="stMaLine">' + StudyTimerShared.sparkline(items.map((x) => x.ma), { max }) + '</div>';
@@ -236,12 +236,12 @@ function renderTrendView() {
     : '<span class="' + (series.deltaPct >= 0 ? 'stDeltaUp' : 'stDeltaDown') + '">' + (series.deltaPct >= 0 ? '+' : '') + series.deltaPct + '%</span>';
   const bestCell = !series.best ? '—'
     : isYear
-      ? (state.language === 'en' ? MONTH_EN[series.best.m - 1].slice(0, 3) : t('monthLabel')(series.best.m)) + ' · ' + fmtMin(series.best.min)
-      : fmtMin(series.best.min);
+      ? (state.language === 'en' ? MONTH_EN[series.best.m - 1].slice(0, 3) : t('monthLabel')(series.best.m)) + ' · ' + fmtMinShort(series.best.min)
+      : fmtMinShort(series.best.min);
   html += '<div class="stSummary">'
-    + stCell(fmtMin(series.totalMin), t('statTotal'))
+    + stCell(fmtMinShort(series.totalMin), t('statTotal'))
     + stCell(deltaCell, t('trDelta'))
-    + stCell(fmtMin(series.avgPerDay), t('statAvg'))
+    + stCell(fmtMinShort(series.avgPerDay), t('statAvg'))
     + stCell(series.studyDays + '/' + series.periodDays, t('statStudyDays'))
     + stCell(bestCell, t(isYear ? 'statBestMonth' : 'statBestDay'))
     + '</div>';
@@ -291,7 +291,7 @@ function renderHeatView() {
     + '<div style="display:flex"><div class="stYDays">' + dayLabels + '</div><div class="stYBody">' + colsHtml + '</div></div>'
     + '</div></div>';
   html += '<div class="stSummary">'
-    + stCell(fmtMin(hm.totalMin), t('statTotal'))
+    + stCell(fmtMinShort(hm.totalMin), t('statTotal'))
     + stCell(hm.activeDays, t('statStudyDays'))
     + stCell(hm.bestStreak + ' ' + t('dayUnit'), t('htBestStreak'))
     + '</div>';
@@ -345,7 +345,7 @@ function renderInsightsView() {
     actInner = '<div class="stActRow">' + acts.map((a) => {
       const pct = Math.max(4, Math.round((a.min / maxA) * 100));
       return '<div class="stActItem"><div class="r1"><span class="nm">' + escHtml(a.name) + '</span>'
-        + '<span class="ct">' + tf('in_times', a.count) + ' · ' + fmtMin(a.min) + '</span></div>'
+        + '<span class="ct">' + tf('in_times', a.count) + ' · ' + fmtMinShort(a.min) + '</span></div>'
         + '<div class="track"><div class="fill"' + stWAttr(pct) + '></div></div></div>';
     }).join('') + '</div>';
   } else actInner = '<div class="stEmptyCard">' + t('in_actsEmpty') + '</div>';
@@ -396,7 +396,7 @@ function renderInsightsView() {
     tInner = '<div class="stTypeBars">' + tList.map((x) => {
       const b = tc[x[0]];
       const pct = b.avgMin > 0 ? Math.max(4, Math.round((b.avgMin / maxT) * 100)) : 2;
-      return '<div class="stTypeCol" data-tip="' + escHtml(tf('in_typeAvg', fmtMin(b.avgMin))) + '">'
+      return '<div class="stTypeCol" data-tip="' + escHtml(tf('in_typeAvg', fmtMinShort(b.avgMin))) + '">'
         + '<span class="v">' + (b.avgMin > 0 ? Math.round(b.avgMin) : '') + '</span>'
         + '<div class="bar"' + stHAttr(pct) + '></div>'
         + '<span class="k">' + x[1] + '</span>'

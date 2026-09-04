@@ -314,40 +314,44 @@
     return { list, total };
   }
 
-  /* ---------- 积分：余额 = 累计专注分钟 − 已兑换（幂等，无收入流水） ---------- */
-  function pointsBalance(dailyStats, points) {
+  /* ---------- 积分：余额 = 累计专注分钟 + 成就加分 − 已兑换（幂等，无收入流水） ---------- */
+  function pointsBalance(dailyStats, points, achievements) {
     let earned = 0;
     for (const k of Object.keys(dailyStats || {})) earned += (dailyStats[k].focusMin || 0);
-    earned = Math.round(earned);
+    const achPts = (achievements && achievements.points) || {};
+    let achEarned = 0;
+    for (const k of Object.keys(achPts)) achEarned += Math.max(0, Number(achPts[k]) || 0);
+    earned = Math.round(earned) + achEarned;
     const spends = (points && points.spends) || [];
     let spent = 0;
     for (const x of spends) spent += Math.max(0, Number(x && x.cost) || 0);
-    return { earned, spent: Math.round(spent), balance: earned - Math.round(spent) };
+    return { earned, achEarned, spent: Math.round(spent), balance: earned - Math.round(spent) };
   }
 
-  /* ---------- 成就注册表：追加条目即扩展新成就（渲染端读取 id/icon/group/goal/progress） ----------
-     titleKey/descKey 对应 i18n 键 ach_<id> / ach_<id>_d（desc 接收 goal 文案参数） */
+  /* ---------- 成就注册表：追加条目即扩展新成就（渲染端读取 id/icon/group/goal/progress/pts） ----------
+     titleKey/descKey 对应 i18n 键 ach_<id> / ach_<id>_d（desc 为完整条件描述的静态文案，随条目一起维护）。
+     pts 为达成奖励积分：非线性递增，简单成就几十分，越难越高。 */
   const ACHIEVEMENTS = [
-    { id: 'total_10h', group: 'focus', icon: 'time', goal: 600, value: (c) => c.totalMin },
-    { id: 'total_50h', group: 'focus', icon: 'time', goal: 3000, value: (c) => c.totalMin },
-    { id: 'total_100h', group: 'focus', icon: 'time', goal: 6000, value: (c) => c.totalMin },
-    { id: 'total_300h', group: 'focus', icon: 'star', goal: 18000, value: (c) => c.totalMin },
-    { id: 'total_1000h', group: 'focus', icon: 'star', goal: 60000, value: (c) => c.totalMin },
-    { id: 'streak_3', group: 'streak', icon: 'done', goal: 3, value: (c) => c.bestStreak },
-    { id: 'streak_7', group: 'streak', icon: 'done', goal: 7, value: (c) => c.bestStreak },
-    { id: 'streak_14', group: 'streak', icon: 'star', goal: 14, value: (c) => c.bestStreak },
-    { id: 'streak_30', group: 'streak', icon: 'star', goal: 30, value: (c) => c.bestStreak },
-    { id: 'streak_100', group: 'streak', icon: 'star', goal: 100, value: (c) => c.bestStreak },
-    { id: 'day_4h', group: 'focus', icon: 'study', goal: 240, value: (c) => c.bestDayMin },
-    { id: 'day_8h', group: 'focus', icon: 'study', goal: 480, value: (c) => c.bestDayMin },
-    { id: 'perfect_day', group: 'habit', icon: 'check', goal: 1, value: (c) => c.perfectDays },
-    { id: 'full_week', group: 'habit', icon: 'stats', goal: 1, value: (c) => c.fullWeeks },
-    { id: 'no_skip_week', group: 'habit', icon: 'skip', goal: 1, value: (c) => c.noSkipWeeks },
-    { id: 'early_bird', group: 'habit', icon: 'time', goal: 10, value: (c) => c.earlyDays },
-    { id: 'night_owl', group: 'habit', icon: 'break', goal: 10, value: (c) => c.lateDays },
-    { id: 'journal_10', group: 'journal', icon: 'journal', goal: 10, value: (c) => c.journalCount },
-    { id: 'journal_50', group: 'journal', icon: 'journal', goal: 50, value: (c) => c.journalCount },
-    { id: 'extra_10', group: 'extra', icon: 'add', goal: 10, value: (c) => c.extraCount }
+    { id: 'total_10h', group: 'focus', icon: 'time', goal: 600, pts: 60, value: (c) => c.totalMin },
+    { id: 'total_50h', group: 'focus', icon: 'time', goal: 3000, pts: 150, value: (c) => c.totalMin },
+    { id: 'total_100h', group: 'focus', icon: 'time', goal: 6000, pts: 320, value: (c) => c.totalMin },
+    { id: 'total_300h', group: 'focus', icon: 'star', goal: 18000, pts: 800, value: (c) => c.totalMin },
+    { id: 'total_1000h', group: 'focus', icon: 'star', goal: 60000, pts: 2000, value: (c) => c.totalMin },
+    { id: 'streak_3', group: 'streak', icon: 'done', goal: 3, pts: 60, value: (c) => c.bestStreak },
+    { id: 'streak_7', group: 'streak', icon: 'done', goal: 7, pts: 150, value: (c) => c.bestStreak },
+    { id: 'streak_14', group: 'streak', icon: 'star', goal: 14, pts: 320, value: (c) => c.bestStreak },
+    { id: 'streak_30', group: 'streak', icon: 'star', goal: 30, pts: 800, value: (c) => c.bestStreak },
+    { id: 'streak_100', group: 'streak', icon: 'star', goal: 100, pts: 2400, value: (c) => c.bestStreak },
+    { id: 'day_4h', group: 'focus', icon: 'study', goal: 240, pts: 80, value: (c) => c.bestDayMin },
+    { id: 'day_8h', group: 'focus', icon: 'study', goal: 480, pts: 200, value: (c) => c.bestDayMin },
+    { id: 'perfect_day', group: 'habit', icon: 'check', goal: 1, pts: 100, value: (c) => c.perfectDays },
+    { id: 'full_week', group: 'habit', icon: 'stats', goal: 1, pts: 260, value: (c) => c.fullWeeks },
+    { id: 'no_skip_week', group: 'habit', icon: 'skip', goal: 1, pts: 260, value: (c) => c.noSkipWeeks },
+    { id: 'early_bird', group: 'habit', icon: 'time', goal: 10, pts: 120, value: (c) => c.earlyDays },
+    { id: 'night_owl', group: 'habit', icon: 'break', goal: 10, pts: 120, value: (c) => c.lateDays },
+    { id: 'journal_10', group: 'journal', icon: 'journal', goal: 10, pts: 60, value: (c) => c.journalCount },
+    { id: 'journal_50', group: 'journal', icon: 'journal', goal: 50, pts: 260, value: (c) => c.journalCount },
+    { id: 'extra_10', group: 'extra', icon: 'add', goal: 10, pts: 100, value: (c) => c.extraCount }
   ];
 
   function achievementCtx(stateLike) {
@@ -398,7 +402,7 @@
     const ctx = achievementCtx(stateLike);
     return ACHIEVEMENTS.map((a) => {
       const value = Math.max(0, Math.round(a.value(ctx)));
-      return { id: a.id, group: a.group, icon: a.icon, goal: a.goal, value, progress: Math.min(value, a.goal), done: value >= a.goal };
+      return { id: a.id, group: a.group, icon: a.icon, goal: a.goal, pts: a.pts, value, progress: Math.min(value, a.goal), done: value >= a.goal };
     });
   }
 

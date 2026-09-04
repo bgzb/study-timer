@@ -553,9 +553,9 @@
   .stBig .v { font-size: 26px; font-weight: 700; color: var(--study); font-variant-numeric: tabular-nums; }
   .stBig .k { font-size: 12px; color: var(--text2); margin-top: 3px; }
 
-  .stSummary { display: flex; gap: 8px; margin: 12px 0; }
-  .stSummary .cell { flex: 1; background: var(--card2); border-radius: 12px; padding: 9px 6px; text-align: center; min-width: 0; }
-  .stSummary .cell .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stSummary { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .stSummary .cell { flex: 1 1 0; background: var(--card2); border-radius: 12px; padding: 9px 6px; text-align: center; min-width: fit-content; }
+  .stSummary .cell .v { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .stSummary .cell .k { font-size: 10.5px; color: var(--text2); margin-top: 2px; white-space: nowrap; }
 
   .stBars { display: flex; align-items: stretch; gap: 6px; height: 150px; padding: 4px 2px 0; }
@@ -637,6 +637,15 @@
     margin-left: auto; border: none; background: var(--study); color: #fff; font-family: inherit;
     font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer; flex-shrink: 0;
   }
+  .jMonthHead {
+    position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px;
+    background: var(--card); padding: 7px 2px 6px; margin: 2px 0 7px;
+    border-bottom: 1px solid var(--line); cursor: pointer; user-select: none;
+  }
+  .jMonthHead .nm { font-size: 12px; font-weight: 700; color: var(--text); }
+  .jMonthHead .cnt { font-size: 10.5px; color: var(--text2); font-variant-numeric: tabular-nums; }
+  .jMonthHead .chev { margin-left: auto; display: inline-flex; color: var(--text2); transform: rotate(-90deg); transition: transform 0.18s; }
+  .jMonthHead.folded .chev { transform: rotate(-180deg); }
   .jRow {
     display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--card2);
     border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s;

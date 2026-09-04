@@ -28,9 +28,11 @@ function applyStateSync() {
   tick();
   setQuote(currentState(day));
   if (settingsOverlay.classList.contains('open')) openSettings();
-  if (journalOverlay.classList.contains('open')) renderJournalPanel();
+  if (journalOverlay.classList.contains('open') && typeof refreshJournalIfChanged === 'function') refreshJournalIfChanged();
   if (statsOverlay.classList.contains('open') && typeof renderStatsPanel === 'function') renderStatsPanel({ quiet: true });
   if (typeof refreshOpenStatsDayLayer === 'function') refreshOpenStatsDayLayer();
+  // 外部改动（如保存手记）也可能解锁成就；各窗口都会检测落盘，通知只由职责窗口发
+  if (typeof syncAchievements === 'function') syncAchievements();
   scheduleBarResize();
 }
 if (bridge && bridge.onStateSync) bridge.onStateSync(() => applyStateSync());

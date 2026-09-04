@@ -2,6 +2,8 @@
 
 const journalOverlay = $('#journalOverlay');
 let journalView = 'list'; // 'list' 或详情日期 'YYYY-MM-DD'
+let jMonthFold = {};      // 用户手动开合的月份覆盖（会话内有效）：'YYYY-MM' -> true 折叠 / false 展开
+let journalSig = null;    // 上次渲染的手记内容签名：state 同步时对比，内容没变不重绘
 const JOURNAL_MOODS = ['mood0', 'mood1', 'mood2', 'mood3', 'mood4'];
 
 function ratingIcons(value, size) {
@@ -27,6 +29,26 @@ function journalDateLabel(str) {
   return yr + day + ' · ' + wd;
 }
 
+function journalMonthLabel(ym) {
+  const y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7));
+  return state.language === 'en' ? MONTH_EN[m - 1] + ' ' + y : y + '年' + m + '月';
+}
+
+function journalRowHtml(k, e) {
+  const min = dayStatOf(k) ? dayStatOf(k).focusMin : 0;
+  const stars = ratingIcons(e.rating, 12);
+  const head = e.headline ? '<div class="jHead">' + escHtml(e.headline) + '</div>' : '';
+  const tags = (e.tags && e.tags.length)
+    ? '<div class="jTags">' + e.tags.map((x) => '<span class="jTag">' + escHtml(x) + '</span>').join('') + '</div>' : '';
+  return '<div class="jRow" data-date="' + k + '">'
+    + '<span class="jEmoji">' + (e.mood >= 0 && e.mood < JOURNAL_MOODS.length ? iconSvg(JOURNAL_MOODS[e.mood], { size: 22 }) : iconSvg('journal', { size: 22 })) + '</span>'
+    + '<div class="jMain"><div class="jDate">' + journalDateLabel(k) + stars + '</div>' + head + tags + '</div>'
+    + '<span class="jMin">' + fmtMinShort(min) + '</span>'
+    + '</div>';
+}
+
+/* 手记按月分组：月份标题吸顶，当前月与上个月默认展开，更早的折叠成一行（点击展开），
+   几百篇手记也不会被无限长的单列淹没 */
 function journalListView() {
   const j = state.journal || {};
   const keys = Object.keys(j).filter((k) => j[k]).sort().reverse();
@@ -36,18 +58,20 @@ function journalListView() {
       + '<button id="jTodayBtn">' + iconText('journal', t('journalFillToday')) + '</button></div>';
   }
   if (!keys.length) return html + '<div class="jEmpty">' + t('journalEmpty') + '</div>';
+  const groups = [];
   for (const k of keys) {
-    const e = j[k];
-    const min = dayStatOf(k) ? dayStatOf(k).focusMin : 0;
-    const stars = ratingIcons(e.rating, 12);
-    const head = e.headline ? '<div class="jHead">' + escHtml(e.headline) + '</div>' : '';
-    const tags = (e.tags && e.tags.length)
-      ? '<div class="jTags">' + e.tags.map((x) => '<span class="jTag">' + escHtml(x) + '</span>').join('') + '</div>' : '';
-    html += '<div class="jRow" data-date="' + k + '">'
-      + '<span class="jEmoji">' + (e.mood >= 0 && e.mood < JOURNAL_MOODS.length ? iconSvg(JOURNAL_MOODS[e.mood], { size: 22 }) : iconSvg('journal', { size: 22 })) + '</span>'
-      + '<div class="jMain"><div class="jDate">' + journalDateLabel(k) + stars + '</div>' + head + tags + '</div>'
-      + '<span class="jMin">' + fmtMin(min) + '</span>'
-      + '</div>';
+    const ym = k.slice(0, 7);
+    if (!groups.length || groups[groups.length - 1].ym !== ym) groups.push({ ym, keys: [] });
+    groups[groups.length - 1].keys.push(k);
+  }
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    const fold = g.ym in jMonthFold ? jMonthFold[g.ym] : gi >= 2;
+    html += '<div class="jMonthHead' + (fold ? ' folded' : '') + '" data-ym="' + g.ym + '" role="button" tabindex="0" aria-expanded="' + (!fold) + '">'
+      + '<span class="nm">' + journalMonthLabel(g.ym) + '</span>'
+      + '<span class="cnt">' + tf('jMonthCnt', g.keys.length) + '</span>'
+      + '<i class="chev">' + iconSvg('back', { size: 12 }) + '</i></div>';
+    if (!fold) for (const k of g.keys) html += journalRowHtml(k, j[k]);
   }
   return html;
 }
@@ -91,7 +115,7 @@ function journalDetailView(dateStr) {
     + '</div>';
   if (st) {
     html += '<div class="stSummary">'
-      + stCell(fmtMin(st.focusMin), t('statTotal'))
+      + stCell(fmtMinShort(st.focusMin), t('statTotal'))
       + stCell(st.done + '/' + st.total, t('statDoneBlocks'))
       + stCell(st.skipped, t('statSkipped'))
       + '</div>';
@@ -119,9 +143,22 @@ function journalDetailView(dateStr) {
   return html;
 }
 
-function renderJournalPanel() {
+function renderJournalPanel(opts) {
   if (!journalOverlay.classList.contains('open')) return;
-  $('#journalBody').innerHTML = journalView === 'list' ? journalListView() : journalDetailView(journalView);
+  const body = $('#journalBody');
+  const keep = !!(opts && opts.keepScroll);
+  const st = keep ? body.scrollTop : 0;
+  body.innerHTML = journalView === 'list' ? journalListView() : journalDetailView(journalView);
+  body.scrollTop = st;
+  journalSig = JSON.stringify(state.journal || {});
+}
+
+/* 状态同步时：手记内容真的变了才重绘（每分钟兜底落盘触发的 sync 不重绘、不丢滚动位置） */
+function refreshJournalIfChanged() {
+  if (!journalOverlay.classList.contains('open')) { journalSig = null; return; }
+  const sig = JSON.stringify(state.journal || {});
+  if (sig === journalSig) return;
+  renderJournalPanel({ keepScroll: true });
 }
 
 function openJournalPanel(dateStr) {
@@ -154,6 +191,13 @@ $('#journalBody').addEventListener('click', (e) => {
     return;
   }
   if (e.target.closest('#jBackBtn')) { openJournalPanel(); return; }
+  const monthHead = e.target.closest('.jMonthHead');
+  if (monthHead && monthHead.dataset.ym) {
+    // 展开状态点击 → 折叠；折叠状态点击 → 展开（覆盖默认值，会话内记住）
+    jMonthFold[monthHead.dataset.ym] = !monthHead.classList.contains('folded');
+    renderJournalPanel({ keepScroll: true });
+    return;
+  }
   const row = e.target.closest('.jRow');
   if (row && row.dataset.date) openJournalPanel(row.dataset.date);
 });

@@ -26,3 +26,13 @@ test('check-in gate fields get safe defaults without touching saved data', () =>
   assert.equal(broken.gateStart, '');
   assert.deepEqual(defaultState().checkins, {});
 });
+
+test('achievement points ledger gets safe defaults without touching saved data', () => {
+  const state = ensureState({ achievements: { unlockedAt: { total_10h: '2026-09-01' } } });
+  assert.deepEqual(state.achievements.unlockedAt, { total_10h: '2026-09-01' }); // 已有解锁记录保持原样
+  assert.deepEqual(state.achievements.points, {});                              // 积分账本补默认
+  const broken = ensureState({ achievements: { unlockedAt: 'bad', points: [] } });
+  assert.deepEqual(broken.achievements.unlockedAt, {});
+  assert.deepEqual(broken.achievements.points, {});
+  assert.deepEqual(defaultState().achievements, { unlockedAt: {}, points: {} });
+});

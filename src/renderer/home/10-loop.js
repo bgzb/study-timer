@@ -228,6 +228,7 @@ function tick() {
     // 若直接用 nowSeconds() 重算"昨天到现在"会得到全零，覆盖掉昨天的记录
     recordTodayStats(86399);
     rebuildDay();
+    if (typeof syncAchievements === 'function') syncAchievements(); // 跨天结算后连续/全勤类成就可能达成
   }
   const gated = gateActiveToday();
   const st = currentState(day);
@@ -239,12 +240,16 @@ function tick() {
     if (lastStateKey !== null && !gated) fireTransition(st);
     lastStateKey = key;
     setQuote(st);
-    if (!gated) recordTodayStats();
+    if (!gated) {
+      recordTodayStats();
+      if (typeof syncAchievements === 'function') syncAchievements(); // 统计落盘后顺手检测新成就（达成即通知）
+    }
   }
   // 兜底：每 60 秒落一次盘，保留进行中块的进度（中途退出应用也不丢）
   if (!gated && Date.now() - lastStatsWrite >= 60000) {
     lastStatsWrite = Date.now();
     recordTodayStats();
+    if (typeof syncAchievements === 'function') syncAchievements(); // 面板没开也能及时解锁并发通知
   }
   if (!gated) maybeAutoOpenSummary(st);
   else if (dutiesOwner()) maybeNudgeCheckin(st);

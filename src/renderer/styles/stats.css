@@ -363,7 +363,7 @@ body.bar .stBadges { grid-template-columns: repeat(3, 1fr); }
 
 .stReportMeta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
 .stReportMeta .m { background: var(--card2); border-radius: 12px; padding: 9px 6px; text-align: center; min-width: 0; }
-.stReportMeta .m .v { font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stReportMeta .m .v { font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stReportMeta .m .k { font-size: 10px; color: var(--text2); margin-top: 2px; white-space: nowrap; }
 .stReportLines { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
 .stReportLines .ln { display: flex; gap: 8px; font-size: 12.5px; color: var(--text); line-height: 1.5; }
@@ -380,7 +380,9 @@ body.bar .stBadges { grid-template-columns: repeat(3, 1fr); }
 }
 #statsTip.show { opacity: 1; transform: none; }
 #statsTip .tt-k { color: var(--text2); font-size: 10.5px; margin-bottom: 2px; }
-#statsTip .tt-v { font-weight: 700; font-variant-numeric: tabular-nums; }
+#statsTip .tt-v { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#statsTip .tt-d { font-size: 11.5px; color: var(--text); margin-top: 3px; line-height: 1.45; }
+#statsTip .tt-p { color: var(--break); font-weight: 700; font-variant-numeric: tabular-nums; }
 #statsTip .tt-s { color: var(--text2); font-size: 11px; margin-top: 2px; }
 
 /* ---------- SVG 图表通用 ---------- */
