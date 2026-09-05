@@ -189,6 +189,43 @@ test('checkAchievements marks thresholds and progress correctly', () => {
   assert.equal(by('night_owl').value, 1);
   assert.equal(by('journal_10').done, false);
   assert.equal(by('extra_10').value, 1);
+  // 新增成就：同批数据上的值与阈值判定
+  assert.equal(by('days_30').value, 7); // 7 天有专注
+  assert.equal(by('days_30').done, false);
+  assert.equal(by('rest_day_8').value, 2); // 08-29 周六 + 08-30 周日
+  assert.equal(by('rest_day_8').done, false);
+  assert.equal(by('perfect_10').value, 1);
+  assert.equal(by('day_12h').done, false);      // 最高 480 < 720
+  assert.equal(by('streak_365').done, false);   // 最长 7 < 365
+  assert.equal(by('journal_streak_14').value, 2); // 08-24、08-25 连续
+  assert.equal(by('journal_100').done, false);
+  assert.equal(by('extra_50').done, false);
+});
+
+test('new achievement metrics: study days, rest-day study, journal streak', () => {
+  // 08-26 周三为节假日、08-29 周六为周末、08-31 周一被覆盖为 weekend
+  const ds = {
+    '2026-08-26': { focusMin: 60, done: 1, total: 1, skipped: 0, blocks: [] },
+    '2026-08-29': { focusMin: 60, done: 1, total: 1, skipped: 0, blocks: [] },
+    '2026-08-31': { focusMin: 60, done: 1, total: 1, skipped: 0, blocks: [] }
+  };
+  const opt = { dailyStats: ds, holidays: { '2026-08-26': '测试节' }, override: { '2026-08-31': 'weekend' } };
+  const by = (id) => insights.checkAchievements(opt).find((x) => x.id === id);
+  assert.equal(by('days_30').value, 3);
+  assert.equal(by('rest_day_8').value, 3); // 节假日 + 周末 + override 周末
+  // 无节假日/覆盖时只算周末
+  const plain = insights.checkAchievements({ dailyStats: ds }).find((x) => x.id === 'rest_day_8');
+  assert.equal(plain.value, 1); // 仅 08-29 周六
+  // 手记连击：08-24..08-26 三天连续，08-29 断开不并入
+  const js = insights.checkAchievements({
+    dailyStats: {},
+    journal: {
+      '2026-08-24': { mood: 2 }, '2026-08-25': {}, '2026-08-26': { mood: 1 },
+      '2026-08-29': { mood: 0 }
+    }
+  }).find((x) => x.id === 'journal_streak_14');
+  assert.equal(js.value, 3);
+  assert.equal(js.done, false);
 });
 
 test('yearHeatmap builds week columns starting Monday with month marks', () => {
@@ -252,6 +289,31 @@ test('achievement pts are positive integers and grow non-linearly within each fa
   assert.ok(byId.total_1000h.pts >= 50 * 10);
   // 简单成就只给几十分
   assert.ok(byId.total_10h.pts < 100 && byId.journal_10.pts < 100 && byId.streak_3.pts < 100);
+  // 新增家族同样满足：同族递增且高阶超过前一级的 2 倍
+  const families = [
+    ['day_4h', 'day_8h', 'day_12h'],
+    ['streak_3', 'streak_7', 'streak_14', 'streak_30', 'streak_100', 'streak_365'],
+    ['days_30', 'days_100'],
+    ['perfect_day', 'perfect_10'],
+    ['journal_10', 'journal_50', 'journal_100'],
+    ['extra_10', 'extra_50']
+  ];
+  for (const fam of families) {
+    for (let i = 1; i < fam.length; i++) {
+      assert.ok(byId[fam[i]].pts > byId[fam[i - 1]].pts * 2, fam[i] + ' 积分应超过前一级的 2 倍');
+    }
+  }
+});
+
+test('every achievement has zh/en name, description keys and a valid icon', () => {
+  const iconPaths = require('../src/renderer/shared/icons.js').PATHS;
+  for (const a of insights.ACHIEVEMENTS) {
+    for (const lang of ['zh', 'en']) {
+      assert.ok(I18N[lang]['ach_' + a.id] != null, lang + ' 缺少成就名称 ach_' + a.id);
+      assert.ok(I18N[lang]['ach_' + a.id + '_d'] != null, lang + ' 缺少成就描述 ach_' + a.id + '_d');
+    }
+    assert.ok(iconPaths[a.icon] != null, a.id + ' 引用的图标不存在: ' + a.icon);
+  }
 });
 
 test('legacy state without new fields loads intact and gains defaults', () => {

@@ -342,16 +342,25 @@
     { id: 'streak_14', group: 'streak', icon: 'star', goal: 14, pts: 320, value: (c) => c.bestStreak },
     { id: 'streak_30', group: 'streak', icon: 'star', goal: 30, pts: 800, value: (c) => c.bestStreak },
     { id: 'streak_100', group: 'streak', icon: 'star', goal: 100, pts: 2400, value: (c) => c.bestStreak },
+    { id: 'streak_365', group: 'streak', icon: 'star', goal: 365, pts: 6000, value: (c) => c.bestStreak },
     { id: 'day_4h', group: 'focus', icon: 'study', goal: 240, pts: 80, value: (c) => c.bestDayMin },
     { id: 'day_8h', group: 'focus', icon: 'study', goal: 480, pts: 200, value: (c) => c.bestDayMin },
+    { id: 'day_12h', group: 'focus', icon: 'study', goal: 720, pts: 500, value: (c) => c.bestDayMin },
     { id: 'perfect_day', group: 'habit', icon: 'check', goal: 1, pts: 100, value: (c) => c.perfectDays },
+    { id: 'perfect_10', group: 'habit', icon: 'star', goal: 10, pts: 400, value: (c) => c.perfectDays },
     { id: 'full_week', group: 'habit', icon: 'stats', goal: 1, pts: 260, value: (c) => c.fullWeeks },
     { id: 'no_skip_week', group: 'habit', icon: 'skip', goal: 1, pts: 260, value: (c) => c.noSkipWeeks },
     { id: 'early_bird', group: 'habit', icon: 'time', goal: 10, pts: 120, value: (c) => c.earlyDays },
     { id: 'night_owl', group: 'habit', icon: 'break', goal: 10, pts: 120, value: (c) => c.lateDays },
+    { id: 'days_30', group: 'habit', icon: 'check', goal: 30, pts: 100, value: (c) => c.studyDays },
+    { id: 'days_100', group: 'habit', icon: 'done', goal: 100, pts: 250, value: (c) => c.studyDays },
+    { id: 'rest_day_8', group: 'habit', icon: 'flame', goal: 8, pts: 200, value: (c) => c.restStudyDays },
     { id: 'journal_10', group: 'journal', icon: 'journal', goal: 10, pts: 60, value: (c) => c.journalCount },
     { id: 'journal_50', group: 'journal', icon: 'journal', goal: 50, pts: 260, value: (c) => c.journalCount },
-    { id: 'extra_10', group: 'extra', icon: 'add', goal: 10, pts: 100, value: (c) => c.extraCount }
+    { id: 'journal_100', group: 'journal', icon: 'journal', goal: 100, pts: 650, value: (c) => c.journalCount },
+    { id: 'journal_streak_14', group: 'journal', icon: 'edit', goal: 14, pts: 200, value: (c) => c.journalStreak },
+    { id: 'extra_10', group: 'extra', icon: 'add', goal: 10, pts: 100, value: (c) => c.extraCount },
+    { id: 'extra_50', group: 'extra', icon: 'add', goal: 50, pts: 300, value: (c) => c.extraCount }
   ];
 
   function achievementCtx(stateLike) {
@@ -359,10 +368,15 @@
     const journal = stateLike.journal || {};
     const extra = stateLike.extra || {};
     const keys = sortedKeys(dailyStats).filter((k) => hasFocus(dailyStats, k));
-    let totalMin = 0, bestDayMin = 0, perfectDays = 0, earlyDays = 0, lateDays = 0;
+    let totalMin = 0, bestDayMin = 0, perfectDays = 0, earlyDays = 0, lateDays = 0, studyDays = 0, restStudyDays = 0;
     for (const k of sortedKeys(dailyStats)) {
       const s = dailyStats[k];
       totalMin += s.focusMin || 0;
+      if ((s.focusMin || 0) > 0) {
+        studyDays++;
+        // 休息日学习：按作息模式判定（override > 补班 > 节假日 > 周末）
+        if (modeOfDateStr(k, stateLike.holidays, stateLike.makeup, stateLike.override) !== 'workday') restStudyDays++;
+      }
       if ((s.focusMin || 0) > bestDayMin) bestDayMin = s.focusMin;
       if (s.done === s.total && s.total >= 8 && (s.focusMin || 0) > 0) perfectDays++;
       const blocks = (s.blocks || []).filter((b) => b.f !== false);
@@ -392,9 +406,17 @@
     let extraCount = 0;
     for (const k of Object.keys(extra)) if (Array.isArray(extra[k])) extraCount += extra[k].length;
     const journalCount = sortedKeys(journal).filter((k) => journal[k]).length;
+    // 手记最长连续天数（与学习连击同算法：今天没写不打断当前连击由调用方关注，这里只算历史最长）
+    let journalStreak = 0, run = 0, prevJ = null;
+    for (const k of sortedKeys(journal)) {
+      if (!journal[k]) continue;
+      run = prevJ && addDays(prevJ, 1) === k ? run + 1 : 1;
+      if (run > journalStreak) journalStreak = run;
+      prevJ = k;
+    }
     return {
       totalMin, bestDayMin, perfectDays, earlyDays, lateDays, fullWeeks, noSkipWeeks,
-      extraCount, journalCount,
+      extraCount, journalCount, studyDays, restStudyDays, journalStreak,
       bestStreak: streaksOf(dailyStats, null).best
     };
   }
