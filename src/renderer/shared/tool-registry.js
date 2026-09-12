@@ -14,14 +14,15 @@
       titleKey: 'drawerGroupTools',
       tools: [
         { id: 'journal', icon: 'journal', labelKey: 'journalTitle', kind: 'action' },
-        { id: 'stats', icon: 'stats', labelKey: 'statsBtn', kind: 'action' }
+        { id: 'stats', icon: 'stats', labelKey: 'statsBtn', kind: 'action' },
+        { id: 'todo', icon: 'todo', labelKey: 'todoTitle', kind: 'action' },
+        { id: 'countdown', icon: 'countdown', labelKey: 'cdTitle', kind: 'action' }
       ]
     },
     {
       id: 'system',
       titleKey: 'drawerGroupSystem',
       tools: [
-        { id: 'theme', icon: 'time', labelKey: 'extLabelTheme', titleKey: 'panelTheme', kind: 'toggle' },
         { id: 'settings', icon: 'settings', labelKey: 'settings', kind: 'action' }
       ]
     }

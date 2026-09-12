@@ -17,7 +17,14 @@ function clockMinutes(value) { return StudyTimerShared.clockMinutes(value); }
 function extraSessionOf(x) { return StudyTimerShared.extraSessionOf(x, t('extraTitle')); }
 function normalizeExtraData(data) { return StudyTimerShared.normalizeExtraData(data); }
 function mergeExtraSessions(sessions, extras) { return StudyTimerShared.mergeExtraSessions(sessions, extras, t('extraTitle')); }
-function expandDay(sessions, skips) { return StudyTimerShared.expandDay(sessions, skips); }
+function expandDay(sessions, skips, windDownAt) { return StudyTimerShared.expandDay(sessions, skips, windDownAt); }
+
+/* 收工记录（state.windDown['YYYY-MM-DD'] = [{ at, undoneAt? }]）：
+   activeAt = 生效中收工的时刻（末项无 undoneAt），传给 expandDay 做块剔除/截断；
+   lastRecord = 最后一条（含已撤销），随 dailyStats 落盘供总结页展示 */
+function windDownList(dateStr) { return (state.windDown || {})[dateStr] || []; }
+function windDownActiveOf(dateStr) { const list = windDownList(dateStr); const last = list[list.length - 1]; return last && last.undoneAt == null ? last : null; }
+function windDownLastOf(dateStr) { const list = windDownList(dateStr); return list[list.length - 1] || null; }
 
 function currentState(day) { return StudyTimerShared.currentState(day, nowSeconds); }
 
@@ -33,7 +40,7 @@ function focusFlagOf(b, dateStr) {
 
 function computeStats(day, nowAt) {
   const edits = ((state.blocks || {})[today.str]) || {};
-  return StudyTimerShared.computeStats(day, edits, nowAt != null ? nowAt : nowSeconds(), today.str, StudyTimerShared.countFromOf(state, today.str));
+  return StudyTimerShared.computeStats(day, edits, nowAt != null ? nowAt : nowSeconds(), today.str, StudyTimerShared.countFromOf(state, today.str), windDownList(today.str));
 }
 
 /* 打卡门禁：当天起算秒（未打卡 → DAY_END，整天不计） */
@@ -42,33 +49,14 @@ function gateActiveToday() { return StudyTimerShared.gateActive(state, today.str
 
 /* 每日轨迹快照：幂等重算"今天到目前为止"并覆盖写入（重启/崩溃不会重复计数）。
    只在职责窗口调用——菜单栏端常驻负责，桌面端在其未运行时兜底，避免双写。
-   未打卡（门禁中）整天不写入：休息日不打卡就完全不计。 */
+   未打卡（门禁中）整天不写入：休息日不打卡就完全不计。
+   块剔除/截断/撤销区间由 shared snapshot 统一处理（与总结页同源），另附收工记录供展示 */
 function recordTodayStats(nowAt) {
   if (!dutiesOwner()) return;
   if (gateActiveToday()) return;
-  const now = nowAt != null ? nowAt : nowSeconds();
-  const from = countFromToday();
-  const stats = computeStats(day, nowAt);
-  const skips = (state.skips && state.skips[today.str]) || [];
-  const blocks = [];
-  let skipped = 0;
-  for (const b of day.blocks) {
-    if (b.type !== 'study' || b.effEnd > now) continue;
-    if (b.effEnd <= from) continue; // 打卡前结束的块不在计数窗口
-    const begin = Math.max(b.start, from);
-    const sk = b.effEnd < b.end;
-    if (sk) skipped++;
-    const sr = sk ? skips.find((x) => x.key === b.key) : null;
-    const ed = blockEditOf(b, today.str);
-    blocks.push({
-      s: begin, e: b.effEnd, min: Math.round(((b.effEnd - begin) / 60) * 10) / 10,
-      sk: sk || undefined, r: (sr && sr.reason) || undefined,
-      act: (ed && ed.act) || undefined, note: (ed && ed.note) || undefined,
-      f: ed && ed.focus === false ? false : undefined,
-    });
-  }
+  const snap = StudyTimerShared.snapshot(day, state, nowAt != null ? nowAt : nowSeconds(), today.str, countFromToday(), windDownList(today.str));
   if (!state.dailyStats) state.dailyStats = {};
-  state.dailyStats[today.str] = { focusMin: stats.focusMin, done: stats.done, total: stats.total, skipped, blocks };
+  state.dailyStats[today.str] = Object.assign(snap, { wd: windDownLastOf(today.str) || undefined });
   saveState();
 }
 

@@ -71,7 +71,10 @@ body.bar .stGrid { grid-template-columns: 1fr; }
 .stEmptyCard { color: var(--text2); font-size: 12px; text-align: center; padding: 18px 0 10px; }
 
 /* stagger 渐显（洞察卡片、徽章等，JS 设 --d 毫秒） */
-.stFade { opacity: 0; animation: stFadeIn 0.4s ease-out both; animation-delay: var(--d, 0ms); }
+/* 不写基础 opacity:0——动画 both 填充已负责延迟起播的隐藏；
+   否则 quiet 重绘 / 减弱动态效果等"禁用动画"场景下 animation:none 会让基础透明态裸露，
+   内容整体隐形（stFade 卡片、应用列表条目全部中招） */
+.stFade { animation: stFadeIn 0.4s ease-out both; animation-delay: var(--d, 0ms); }
 @keyframes stFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 总览 hero ---------- */
@@ -174,7 +177,7 @@ body.bar .stGrid { grid-template-columns: 1fr; }
 .stYCell {
   width: 10px; height: 10px; border-radius: 3px; background: var(--card2);
   border: 1px solid var(--line); box-sizing: border-box; cursor: pointer; position: relative;
-  opacity: 0; animation: stCellIn 0.3s ease-out both; animation-delay: var(--d, 0ms);
+  animation: stCellIn 0.3s ease-out both; animation-delay: var(--d, 0ms);
 }
 @keyframes stCellIn { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: none; } }
 .stYCell.l1 { background: var(--study-bg); border-color: transparent; }
@@ -396,15 +399,15 @@ body.bar .stBadges { grid-template-columns: repeat(3, 1fr); }
 }
 @keyframes stRingDraw { to { stroke-dashoffset: 0; } }
 .stc-clock .stc-rc-grid { stroke: var(--line); stroke-dasharray: 2 4; }
-.stc-clock .stc-rc-bar { stroke: var(--study); stroke-width: 6; stroke-linecap: round; opacity: 0; animation: stBarIn 0.4s ease-out forwards; }
-.stc-clock .stc-rc-bar.alt { stroke: var(--break); stroke-width: 4; opacity: 0; }
+.stc-clock .stc-rc-bar { stroke: var(--study); stroke-width: 6; stroke-linecap: round; animation: stBarIn 0.4s ease-out forwards; }
+.stc-clock .stc-rc-bar.alt { stroke: var(--break); stroke-width: 4; }
 @keyframes stBarIn { from { opacity: 0; } to { opacity: 0.9; } }
 .stc-clock .stc-rc-bar.alt { animation-name: stBarInAlt; }
 @keyframes stBarInAlt { from { opacity: 0; } to { opacity: 0.75; } }
 .stc-clock .stc-rc-lab { fill: var(--text2); font-size: 10px; stroke: none; }
 .stc-scatter .stc-sc-grid { stroke: var(--line); }
 .stc-scatter .stc-sc-lab { fill: var(--text2); font-size: 9.5px; stroke: none; }
-.stc-scatter .stc-sc-dot { fill: var(--study); fill-opacity: 0.75; opacity: 0; animation: stDotIn 0.35s ease-out forwards; cursor: pointer; }
+.stc-scatter .stc-sc-dot { fill: var(--study); fill-opacity: 0.75; animation: stDotIn 0.35s ease-out forwards; cursor: pointer; }
 .stc-scatter .stc-sc-dot:hover { fill-opacity: 1; }
 @keyframes stDotIn { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: none; } }
 

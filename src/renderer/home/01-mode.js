@@ -3,7 +3,6 @@
  * 提醒/统计等副作用由"职责窗口"触发（菜单栏端常驻负责；桌面端在菜单栏端
  * 未运行时临时接管），bar 面板始终纯展示，避免双份 */
 const BAR_MODE = new URLSearchParams(location.search).get('mode') === 'bar';
-const BAR_THEME_KEY = 'studyTimer.barTheme';
 const iconApi = window.StudyTimerIcons || {};
 const iconSvg = iconApi.iconSvg;
 const iconText = iconApi.iconText;
@@ -26,13 +25,8 @@ function readAll() {
   }
   return null;
 }
-let barTheme = 'paper';
 if (BAR_MODE) {
   document.body.classList.add('bar');
-  const all0 = readAll();
-  if (all0) barTheme = all0.barTheme || 'paper';
-  else { try { barTheme = localStorage.getItem(BAR_THEME_KEY) || 'paper'; } catch (e) {} }
-  if (barTheme === 'glass') document.body.classList.add('glass');
 }
 
 function t(key) {

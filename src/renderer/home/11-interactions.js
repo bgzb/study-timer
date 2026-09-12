@@ -39,10 +39,15 @@ const extraError = $('#extraError');
 function extraMinutes(value) { return clockMinutes(value); }
 function extraIntervalsForToday(extras) {
   const intervals = [];
+  // 收工生效中：收工点之前的计划时段仍占用，之后的计划时段已从当天剔除，可自由加钟
+  const wd = windDownActiveOf(today.str);
+  const wdMin = wd ? Math.floor(wd.at / 60) : null;
   const sessions = state.schedules[modeInfo.mode] || [];
   sessions.forEach((s) => {
     const start = clockMinutes(s.start), duration = (s.seq || []).reduce((a, n) => a + Number(n || 0), 0);
-    if (Number.isFinite(start) && duration > 0) intervals.push({ start, end: start + duration });
+    if (!Number.isFinite(start) || duration <= 0) return;
+    if (wdMin != null && start >= wdMin) return;
+    intervals.push({ start, end: wdMin != null ? Math.min(start + duration, wdMin) : start + duration });
   });
   (extras || []).forEach((x) => {
     const start = clockMinutes(x.start), end = clockMinutes(x.end);
@@ -202,12 +207,50 @@ $('#skipConfirm').addEventListener('click', () => {
   }
   closeSkipReason();
 });
+
+/* 收工：提前结束今天——已学时间照常记录，剩余计划时段不计应完成、不标跳过；收工后仍可加钟。
+   按钮双态（文案由 renderStats 维护）：未收工弹确认层；收工生效中点击即撤销 */
+const windDownOverlay = $('#windDownOverlay');
+function openWindDown() {
+  windDownOverlay.classList.add('open');
+  scheduleBarResize();
+}
+function closeWindDown() {
+  windDownOverlay.classList.remove('open');
+  scheduleBarResize();
+}
+$('#windDownBtn').addEventListener('click', () => {
+  if (!windDownActiveOf(today.str)) { openWindDown(); return; }
+  // 撤销收工：保留记录（区间 [at, undoneAt) 从统计剔除），原日程从当前时刻起照常流转
+  state = loadState();
+  const last = windDownList(today.str)[windDownList(today.str).length - 1];
+  if (!last) return;
+  last.undoneAt = nowSeconds();
+  saveState(); rebuildDay(); recordTodayStats(); tick();
+});
+$('#closeWindDown').addEventListener('click', closeWindDown);
+$('#windDownCancel').addEventListener('click', closeWindDown);
+windDownOverlay.addEventListener('click', (e) => { if (e.target === windDownOverlay) closeWindDown(); });
+$('#windDownConfirm').addEventListener('click', () => {
+  // 弹层开着时日程可能已自然结束，确认前重新校验
+  if (currentState(day).phase === 'done') { closeWindDown(); return; }
+  if (!state.windDown) state.windDown = {};
+  const list = state.windDown[today.str] || (state.windDown[today.str] = []);
+  const last = list[list.length - 1];
+  if (!last || last.undoneAt != null) list.push({ at: nowSeconds() });
+  saveState(); rebuildDay(); recordTodayStats(); tick();
+  closeWindDown();
+});
+
 if (!BAR_MODE) {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     // 按层级从上往下收：先弹层，再侧边抽屉
     if (extraOverlay.classList.contains('open')) { closeExtra(); return; }
     if (skipReasonOverlay.classList.contains('open')) { closeSkipReason(); return; }
+    if (windDownOverlay.classList.contains('open')) { closeWindDown(); return; }
+    if (todoOverlay.classList.contains('open')) { closeTodoPanel(); return; }
+    if (cdOverlay.classList.contains('open')) { closeCountdownPanel(); return; }
     closeDrawer();
   });
 }

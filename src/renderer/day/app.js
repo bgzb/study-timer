@@ -67,14 +67,16 @@ for (const x of daySkips) skipMap[x.key] = x;
 const dayEdits = ((state.blocks || {})[date]) || {};
 const mode = shared.modeFor(date, state);
 const sessions = shared.mergeExtraSessions(((state.schedules || {})[mode] || []), ((state.extra || {})[date] || []));
-const built = shared.expandDay(sessions, daySkips);
+const wdList = (state.windDown || {})[date] || [];
+const wdActive = wdList[wdList.length - 1];
+const built = shared.expandDay(sessions, daySkips, wdActive && wdActive.undoneAt == null ? wdActive.at : null);
 const settleAt = isToday ? nowSeconds() : 86399;
 
 function editOf(b) { return dayEdits[b.key] || null; }
 function focusFlagOf(b) { return shared.focusFlagOf(b, dayEdits); }
 // 打卡门禁同口径：该日起算秒（未打卡且门禁启用后的日子整天不计）
 const countFrom = shared.countFromOf(state, date);
-function computeRecap(edits) { return shared.computeRecap(built, edits, settleAt, countFrom); }
+function computeRecap(edits) { return shared.computeRecap(built, edits, settleAt, countFrom, wdList); }
 
 /* ==================== 渲染 ==================== */
 
@@ -119,7 +121,7 @@ function renderRecap() {
 function statusOf(b) {
   const now = isToday ? nowSeconds() : 86400;
   if (isToday && b.start <= now && now < b.effEnd) return 'now';
-  if (b.effEnd < b.end) return 'skipped';
+  if (b.effEnd < b.end) return b.wd ? 'done' : 'skipped'; // 收工截断不是跳过，按已结束呈现（时长如实到收工点）
   if (b.start > now) return 'upcoming';
   return 'done';
 }
@@ -130,6 +132,7 @@ function renderBlocks() {
   if (!built.blocks.length) return;
   let curSess = -1;
   for (const b of built.blocks) {
+    if (b.off) continue; // 收工剔除的时段不入编辑列表
     if (b.sIdx !== curSess) {
       curSess = b.sIdx;
       const s = built.sess[curSess];
@@ -238,7 +241,7 @@ function collectEdits() {
 
 function recomputeDaily(edits) {
   // state 在保存前会被重读，起算秒以最新状态为准（页面开着时可能在别处打了卡）
-  return shared.snapshot(built, { blocks: { [date]: edits }, skips: { [date]: daySkips } }, settleAt, date, shared.countFromOf(state, date));
+  return shared.snapshot(built, { blocks: { [date]: edits }, skips: { [date]: daySkips } }, settleAt, date, shared.countFromOf(state, date), wdList);
 }
 
 $('#closeBtn').addEventListener('click', () => { window.close(); });
@@ -254,7 +257,8 @@ $('#saveBtn').addEventListener('click', () => {
   else delete state.blocks[date];
   if (built.blocks.length) {
     state.dailyStats = state.dailyStats || {};
-    state.dailyStats[date] = recomputeDaily(edits);
+    // 保留收工记录供总结页展示（snapshot 本身不含该字段）
+    state.dailyStats[date] = Object.assign(recomputeDaily(edits), { wd: wdList[wdList.length - 1] || undefined });
   }
   saveState(state);
   $('#savedMask').classList.add('show');

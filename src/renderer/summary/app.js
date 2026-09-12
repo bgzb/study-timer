@@ -7,6 +7,7 @@ const T = {
     titleNew: '今日复盘', titleEdit: '编辑这篇总结',
     recapFocus: '专注', recapDone: '完成', recapSkip: '跳过',
     recapNone: '这一天没有学习记录',
+    windDownAt: (tm) => '收工于 ' + tm, windDownUndone: '（已撤销）',
     studyWord: '学习', breakWord: '休息',
     skipLogTitle: '跳过记录', skipNoReason: '未填写原因', skipAtTime: (tm) => '跳过于 ' + tm,
     editDayBtn: '编辑时间块',
@@ -19,6 +20,7 @@ const T = {
     lbGood: '今天做得好的', phGood: '哪些事推进顺利？哪些瞬间值得记住？',
     lbImprove: '可以改进的', phImprove: '哪里分心了？下次遇到同样情况怎么应对？',
     lbPlan: '明天想做的', phPlan: '给明天的自己留一句话或一个小目标…',
+    bringTodos: '带入今日未完成待办', todoOther: '其他',
     later: '稍后再说', saveNew: '保存今日总结', saveEdit: '保存修改', close: '关闭',
     saved: '已保存，明天见',
     weekend: ['日', '一', '二', '三', '四', '五', '六'],
@@ -28,6 +30,7 @@ const T = {
     titleNew: 'Daily Review', titleEdit: 'Edit this review',
     recapFocus: 'Focus', recapDone: 'Blocks', recapSkip: 'Skipped',
     recapNone: 'No study records this day',
+    windDownAt: (tm) => 'wound down at ' + tm, windDownUndone: ' (resumed)',
     studyWord: 'Study', breakWord: 'Break',
     skipLogTitle: 'Skipped blocks', skipNoReason: 'No reason given', skipAtTime: (tm) => 'skipped at ' + tm,
     editDayBtn: 'Edit blocks',
@@ -40,6 +43,7 @@ const T = {
     lbGood: 'What went well', phGood: 'What moved forward? Any moments worth keeping?',
     lbImprove: 'To improve', phImprove: 'Where did focus slip? How to handle it next time?',
     lbPlan: 'For tomorrow', phPlan: 'Leave a note or a small goal for tomorrow…',
+    bringTodos: 'Bring in unfinished to-dos', todoOther: 'Other',
     later: 'Not now', saveNew: 'Save review', saveEdit: 'Save changes', close: 'Close',
     saved: 'Saved — see you tomorrow',
     weekend: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
@@ -116,10 +120,14 @@ function renderRecap() {
   const min = Math.round(st.focusMin || 0);
   const h = Math.floor(min / 60), m = min % 60;
   card.className = 'recap';
+  const wd = st.wd && Number.isFinite(+st.wd.at)
+    ? '<div class="wdLine">' + tt('windDownAt')(fmtClock(st.wd.at)) + (st.wd.undoneAt != null ? tt('windDownUndone') : '') + '</div>'
+    : '';
   card.innerHTML =
     '<div class="cell"><div class="v">' + (h > 0 ? tt('durH')(h, m) : tt('durM')(m)) + '</div><div class="k">' + tt('recapFocus') + '</div></div>'
     + '<div class="cell"><div class="v">' + tt('block')(st.done || 0, st.total || 0) + '</div><div class="k">' + tt('recapDone') + '</div></div>'
-    + '<div class="cell"><div class="v">' + (st.skipped || 0) + '</div><div class="k">' + tt('recapSkip') + '</div></div>';
+    + '<div class="cell"><div class="v">' + (st.skipped || 0) + '</div><div class="k">' + tt('recapSkip') + '</div></div>'
+    + wd;
 }
 
 /* 跳过记录：读 skips 事件日志（含理由与块快照），当天没有跳过则整卡隐藏 */
@@ -246,6 +254,40 @@ function updateSaveBtn() {
 ['headline', 'good', 'improve', 'planT'].forEach((id) => {
   $('#' + id).addEventListener('input', updateSaveBtn);
 });
+$('#planT').addEventListener('input', updateBringTodosBtn);
+
+/* ==================== 带入今日未完成待办 ==================== */
+/* plan 为空且当天有未完成待办时显示按钮；点击仅预填 plan 字段，不自动保存。
+   块标签复用共享作息模型（modeFor/expandDay），与主窗口「复制为计划」的分组格式一致。 */
+
+function summaryBlockLabelOf(blockKey) {
+  const mode = shared.modeFor(date, state);
+  const sessions = shared.mergeExtraSessions(
+    (state.schedules || {})[mode] || [], (state.extra || {})[date] || [], '加钟');
+  const dayD = shared.expandDay(sessions, (state.skips || {})[date] || []);
+  const b = dayD.blocks.find((x) => x.key === blockKey);
+  if (!b) return null;
+  const sess = dayD.sess[b.sIdx];
+  const zh = lang !== 'en';
+  const time = shared.fmtClock(b.start);
+  return sess ? sess.name + ' ' + time : (zh ? '时段 ' + (b.sIdx + 1) : 'Session ' + (b.sIdx + 1)) + ' ' + time;
+}
+
+function unfinishedTodosNow() {
+  return shared.unfinishedTodosOf(state.todos, date);
+}
+
+function updateBringTodosBtn() {
+  const btn = $('#bringTodosBtn');
+  btn.hidden = !!$('#planT').value.trim() || !unfinishedTodosNow().length;
+  btn.textContent = tt('bringTodos') + '（' + unfinishedTodosNow().length + '）';
+}
+
+$('#bringTodosBtn').addEventListener('click', () => {
+  $('#planT').value = shared.todosToPlanText(unfinishedTodosNow(), summaryBlockLabelOf, tt('todoOther'));
+  updateBringTodosBtn();
+  updateSaveBtn();
+});
 
 /* ==================== 保存 / 稍后 ==================== */
 
@@ -326,3 +368,4 @@ renderMoodRow();
 renderStarRow();
 renderTagRow();
 updateSaveBtn();
+updateBringTodosBtn();

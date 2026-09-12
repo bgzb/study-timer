@@ -71,7 +71,8 @@ function renderDrawer() {
 const DRAWER_ACTIONS = {
   journal: () => openJournalPanel(),
   stats: () => openStats(),
-  theme: () => applyBarTheme(StudyTimerShared.nextPanelTheme(barTheme), true),
+  todo: () => openTodoPanel(),
+  countdown: () => openCountdownPanel(),
   settings: () => openSettings()
 };
 
@@ -99,14 +100,19 @@ drawerToggle.addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
   if (drawerIsOpen() && !toolDrawer.contains(e.target)) closeDrawer();
 });
-// 点条目只执行动作，抽屉保持原状：弹层（z-90+）盖在抽屉之上，窗口尺寸不变
+// 点条目执行动作。开面板的动作先收起抽屉：bar 模式下窗口随抽屉向右加宽，
+// 面板是 fixed 全覆盖，会跟着被拉宽、关面板后又缩回——先收抽屉面板尺寸就恒定。
+// toggle 类（主题）不开面板，保持抽屉原状。
 $('#drawerScroll').addEventListener('click', (e) => {
   const btn = e.target.closest('.td-item');
   if (!btn) return;
   const action = DRAWER_ACTIONS[btn.dataset.tool];
-  if (action) action();
+  if (!action) return;
+  const def = StudyTimerShared.TOOL_GROUPS
+    .flatMap((g) => g.tools)
+    .find((x) => x.id === btn.dataset.tool);
+  if (!def || def.kind !== 'toggle') closeDrawer();
+  action();
 });
 
 renderDrawer();
-// 09-bar.js 的 syncPanelTheme 先于本文件执行时抽屉条目尚未渲染，这里补一次开关态同步
-syncPanelTheme();

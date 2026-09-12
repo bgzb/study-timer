@@ -22,7 +22,6 @@ function closeSettingsPanel() {
 // 其余窗口改了状态 → 重读 localStorage 并刷新本地视图
 function applyStateSync() {
   state = loadState();
-  syncPanelTheme();
   applyI18n();
   rebuildDay();
   tick();
@@ -30,6 +29,8 @@ function applyStateSync() {
   if (settingsOverlay.classList.contains('open')) openSettings();
   if (journalOverlay.classList.contains('open') && typeof refreshJournalIfChanged === 'function') refreshJournalIfChanged();
   if (statsOverlay.classList.contains('open') && typeof renderStatsPanel === 'function') renderStatsPanel({ quiet: true });
+  if (todoOverlay.classList.contains('open') && typeof refreshTodoIfChanged === 'function') refreshTodoIfChanged();
+  if (cdOverlay.classList.contains('open') && typeof refreshCountdownIfChanged === 'function') refreshCountdownIfChanged();
   if (typeof refreshOpenStatsDayLayer === 'function') refreshOpenStatsDayLayer();
   // 外部改动（如保存手记）也可能解锁成就；各窗口都会检测落盘，通知只由职责窗口发
   if (typeof syncAchievements === 'function') syncAchievements();
@@ -40,39 +41,14 @@ if (bridge && bridge.onStateSync) bridge.onStateSync(() => applyStateSync());
 // 否则本页 60s 兜底落盘会用内存旧数据覆盖掉刚保存的编辑
 if (!bridge) window.addEventListener('storage', (e) => { if (e.key === STORE_KEY) applyStateSync(); });
 
-function applyBarTheme(theme, persist) {
-  barTheme = StudyTimerShared.normalizePanelTheme(theme);
-  const glass = barTheme === 'glass';
-  if (BAR_MODE) {
-    document.body.classList.toggle('glass', glass);
-    if (bridge && bridge.setBarVibrancy) bridge.setBarVibrancy(glass);
-  }
-  const themeItem = $('#toolDrawer .td-item[data-tool="theme"]');
-  if (themeItem) themeItem.setAttribute('aria-pressed', String(glass));
-  if (persist) saveState();
-}
-
-function syncPanelTheme() {
-  const all = readAll();
-  let stored = all && all.barTheme;
-  if (!all) {
-    try { stored = localStorage.getItem(BAR_THEME_KEY); } catch (e) {}
-  }
-  applyBarTheme(stored || barTheme, false);
-}
-
-// 主题切换的点击动作在 17-tool-drawer.js 的 DRAWER_ACTIONS 里统一分发
-syncPanelTheme();
-
 if (BAR_MODE) {
-  // 初始 vibrancy 与已存皮肤一致
-  if (bridge && bridge.setBarVibrancy) bridge.setBarVibrancy(document.body.classList.contains('glass'));
-
   // Escape：按层级从上往下收——先弹层，再模式弹层，再侧边抽屉，最后收面板
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (skipReasonOverlay.classList.contains('open')) { closeSkipReason(); return; }
     if (extraOverlay.classList.contains('open')) { closeExtra(); return; }
+    if (todoOverlay.classList.contains('open')) { closeTodoPanel(); return; }
+    if (cdOverlay.classList.contains('open')) { closeCountdownPanel(); return; }
     if (typeof dismissStatsLayer === 'function' && dismissStatsLayer()) return; // 统计滑入层（日详情/报告）
     if (statsOverlay.classList.contains('open')) { closeStatsPanel(); return; }
     if (settingsOverlay.classList.contains('open')) { closeSettingsPanel(); return; }

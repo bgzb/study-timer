@@ -340,8 +340,14 @@ function renderDataTab() {
     sw.checked = false;
     $('#autostartHint').textContent = t('autostartWeb');
   }
+  $('#appUsageSwitch').checked = state.appUsage !== false;
   document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('active', b.dataset.lang === quoteLang()));
 }
+
+$('#appUsageSwitch').addEventListener('change', (e) => {
+  state.appUsage = e.target.checked;
+  saveState(); // 主进程采集器 30 秒内读到新开关；已有数据保留
+});
 
 $('#langSeg').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-lang]');
@@ -460,7 +466,7 @@ $('#importFile').addEventListener('change', (e) => {
 
 $('#wipeBtn').addEventListener('click', () => {
   if (!confirm(t('confirmWipe'))) return;
-  try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(BAR_THEME_KEY); } catch (e) {}
+  try { localStorage.removeItem(STORE_KEY); } catch (e) {}
   // 就地重置（两种窗口通用；bar 面板不能整页 reload）
   state = defaultState();
   state.gateStart = getToday().str; // 门禁从重置当天起继续生效

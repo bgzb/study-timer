@@ -352,6 +352,10 @@ function statsViewAction(act, el) {
       stInsRange = ['30', 'year', 'all'].indexOf(el.dataset.range) >= 0 ? el.dataset.range : '30';
       renderStatsPanel();
       return true;
+    case 'apps-range':
+      stAppsRange = ['today', '7d', 'month', 'year', 'all'].indexOf(el.dataset.range) >= 0 ? el.dataset.range : 'today';
+      renderStatsPanel();
+      return true;
     case 'report':
       openStatsReportLayer();
       return true;

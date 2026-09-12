@@ -65,8 +65,21 @@
   header {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
   }
+  /* 主页倒数徽标（cdHome 开关开启时显示，点击打开倒数日面板） */
+  #cdHomeChip {
+    display: inline-flex; align-items: center; gap: 4px;
+    border: none; cursor: pointer; font-family: inherit;
+    font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px;
+    background: var(--study-bg); color: var(--study); white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    transition: filter 0.15s;
+  }
+  #cdHomeChip:hover { filter: brightness(0.96); }
+  #cdHomeChip.hidden { display: none; }
+  body.bar #cdHomeChip { font-size: 11.5px; padding: 3px 10px; }
   #dateLine { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
   #dateSub { font-size: 12px; color: var(--text2); margin-left: 2px; font-weight: 400; }
   .badge {
@@ -280,6 +293,8 @@
   .tl-gap { background: var(--line); }
   .tl-past.tl-study { opacity: 0.62; }
   .tl-past.tl-break { opacity: 0.55; }
+  /* 收工剔除的时段：灰显、不参与过去/当前态 */
+  .tl-off { background: repeating-linear-gradient(135deg, var(--line), var(--line) 4px, transparent 4px, transparent 8px); opacity: 0.45; }
   .tl-current { opacity: 1; }
   .tl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: rgba(255,255,255,0.42); border-radius: 2px; }
   #timelineLabels { position: relative; height: 12px; margin-top: 5px; }
@@ -310,7 +325,7 @@
   #statsText { font-size: 13.5px; color: var(--text2); white-space: nowrap; }
   #statsText b { color: var(--text); font-weight: 600; }
   /* nowrap + 禁止收缩：窄窗口下按钮文字绝不竖排换行 */
-  #skipBtn, #extraBtn {
+  #skipBtn, #extraBtn, #windDownBtn {
     display: inline-flex; align-items: center; gap: 6px;
     border: 1px solid var(--line); background: var(--card); color: var(--text2);
     font-family: inherit; font-size: 13px; padding: 8px 14px; border-radius: 11px; cursor: pointer;
@@ -319,8 +334,9 @@
   }
   #skipBtn:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); transform: translateY(-1px); }
   #extraBtn:hover { border-color: var(--study); color: var(--study); transform: translateY(-1px); }
-  #skipBtn:active:not(:disabled), #extraBtn:active { transform: scale(0.96); }
-  #skipBtn:disabled { opacity: 0.4; cursor: default; }
+  #windDownBtn:hover:not(:disabled) { border-color: var(--break); color: var(--break); transform: translateY(-1px); }
+  #skipBtn:active:not(:disabled), #extraBtn:active, #windDownBtn:active:not(:disabled) { transform: scale(0.96); }
+  #skipBtn:disabled, #windDownBtn:disabled { opacity: 0.4; cursor: default; }
 
   /* ===== 首次启用遮罩 ===== */
   #enableOverlay {
@@ -605,6 +621,23 @@
   .stLogItem .m { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
   .stEmpty { color: var(--text2); font-size: 13px; text-align: center; padding: 26px 0 14px; }
 
+  /* 应用视图（前台应用使用） */
+  .auDot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+  .auDot.auS { background: var(--study); }
+  .auDot.auB { background: var(--break); }
+  .auDot.auO { background: var(--wait); }
+  .auList { display: flex; flex-direction: column; gap: 7px; }
+  .auItem { padding: 8px 10px; background: var(--card2); border-radius: 10px; cursor: default; }
+  .auItem .r1 { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+  .auItem .nm { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .auItem .ct { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .auBar { display: flex; height: 7px; border-radius: 4px; overflow: hidden; background: var(--line); }
+  .auBar i { display: block; height: 100%; transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+  .auBar i.auS { background: var(--study); }
+  .auBar i.auB { background: var(--break); }
+  .auBar i.auO { background: var(--wait); }
+  .auMore { margin-top: 8px; text-align: center; font-size: 11.5px; color: var(--text2); }
+
   /* ===== 总结手记面板 ===== */
   #journalOverlay {
     position: fixed; inset: 0; z-index: 94; background: rgba(30, 25, 20, 0.45);
@@ -741,6 +774,42 @@
   #skipConfirm:hover:not(:disabled) { filter: brightness(1.06); }
   #skipConfirm:disabled { opacity: 0.4; cursor: default; }
 
+  /* ===== 收工确认弹窗 ===== */
+  #windDownOverlay {
+    position: fixed; inset: 0; z-index: 96; background: rgba(30, 25, 20, 0.45);
+    backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center;
+    padding: 24px 16px;
+  }
+  #windDownOverlay.open { display: flex; }
+  #windDownPanel {
+    background: var(--card); border-radius: 20px; width: min(400px, 100%);
+    max-height: 100%; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  #windDownHead {
+    display: flex; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  #windDownHead h2 { font-size: 17px; }
+  #closeWindDown {
+    margin-left: auto; border: none; background: var(--card2); color: var(--text2);
+    width: 30px; height: 30px; border-radius: 9px; cursor: pointer; font-size: 15px;
+  }
+  #windDownBody { padding: 14px 20px 18px; }
+  #windDownHint { font-size: 12.5px; color: var(--text2); line-height: 1.6; }
+  #windDownActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  #windDownCancel {
+    border: 1px solid var(--line); background: var(--card); color: var(--text2);
+    font-family: inherit; font-size: 13px; padding: 8px 16px; border-radius: 10px; cursor: pointer;
+  }
+  #windDownCancel:hover { color: var(--text); border-color: var(--text2); }
+  #windDownConfirm {
+    border: none; background: var(--break); color: #fff; font-family: inherit;
+    font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 10px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  #windDownConfirm:hover { filter: brightness(1.06); }
+
   /* ===== 临时加钟弹窗 ===== */
   #extraOverlay {
     position: fixed; inset: 0; z-index: 97; background: rgba(30, 25, 20, 0.45);
@@ -839,7 +908,7 @@
   /* 窄幅下一行放不下文案+按钮：改为文案一行、按钮一行，按钮行留横向扩展空间 */
   body.bar #statsRow { flex-direction: column; align-items: stretch; }
   body.bar #statsText { font-size: 14px; }
-  body.bar #skipBtn, body.bar #extraBtn { font-size: 13px; padding: 8px 12px; border-radius: 10px; }
+  body.bar #skipBtn, body.bar #extraBtn, body.bar #windDownBtn { font-size: 13px; padding: 8px 12px; border-radius: 10px; }
   body.bar #statsActions { gap: 6px; justify-content: flex-start; }
   body.bar #extraOverlay { padding: 10px; }
   body.bar #extraPanel { width: 100%; border-radius: 14px; }
@@ -852,24 +921,94 @@
   body.bar #settingsTabs button { font-size: 13px; padding: 8px 13px 10px; }
   body.bar #settingsBody { padding: 14px 16px 18px; }
 
-  /* 毛玻璃皮肤（body.bar.glass）：背景交给系统 vibrancy，卡片半透明浮在上面 */
-  body.bar.glass { background: transparent; }
-  body.bar.glass {
-    --card: rgba(255, 255, 255, 0.72);
-    --card2: rgba(248, 244, 238, 0.62);
-    --line: rgba(120, 110, 95, 0.2);
+  /* ===== 今日待办面板 ===== */
+  #todoOverlay {
+    position: fixed; inset: 0; z-index: 94; background: rgba(30, 25, 20, 0.45);
+    backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center;
+    padding: 24px 16px;
   }
-  /* 抽屉作为"下一层"用更实的材质：重模糊 + 更高不透明度，与浮在上面的卡片拉开纵深 */
-  body.bar.glass #toolDrawer {
-    background: rgba(250, 247, 242, 0.86);
-    backdrop-filter: blur(24px) saturate(1.35);
-    -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  #todoOverlay.open { display: flex; }
+  #todoPanel {
+    background: var(--card); border-radius: 20px; width: min(460px, 100%);
+    max-height: 100%; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   }
-  @media (prefers-color-scheme: dark) {
-    body.bar.glass {
-      --card: rgba(44, 40, 36, 0.74);
-      --card2: rgba(36, 32, 30, 0.62);
-      --line: rgba(255, 255, 255, 0.1);
-    }
-    body.bar.glass #toolDrawer { background: rgba(34, 30, 28, 0.88); }
+  #todoHead { display: flex; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+  #todoHead h2 { font-size: 17px; }
+  #todoCount { font-size: 12px; color: var(--text2); margin-left: 10px; font-variant-numeric: tabular-nums; }
+  #closeTodo, #closeCd, #closeDq {
+    margin-left: auto; border: none; background: var(--card2); color: var(--text2);
+    width: 30px; height: 30px; border-radius: 9px; cursor: pointer; font-size: 15px;
   }
+  #todoBody { padding: 14px 20px 18px; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .todoAddRow { display: flex; gap: 8px; margin-bottom: 12px; }
+  .todoAddRow input[type="text"] {
+    flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card2); color: var(--text);
+    font-family: inherit; font-size: 13.5px; padding: 9px 11px; border-radius: 10px; outline: none;
+  }
+  .todoAddRow input[type="text"]:focus { border-color: var(--study); }
+  .todoAddRow select {
+    max-width: 170px; border: 1px solid var(--line); background: var(--card2); color: var(--text);
+    font-family: inherit; font-size: 12.5px; padding: 8px 6px; border-radius: 10px; outline: none;
+  }
+  .tdoRow {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; background: var(--card2);
+    border-radius: 10px; margin-bottom: 6px; font-size: 13.5px;
+  }
+  .tdoRow .tdo-chk {
+    width: 20px; height: 20px; flex-shrink: 0; padding: 0; cursor: pointer;
+    border: 1.5px solid var(--line); border-radius: 6px; background: var(--card); color: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .tdoRow .tdo-chk:hover { border-color: var(--break); }
+  .tdoRow.done .tdo-chk { background: var(--break); border-color: var(--break); color: #fff; }
+  .tdoRow .tdo-text { flex: 1; min-width: 0; word-break: break-word; }
+  .tdoRow.done .tdo-text { color: var(--text2); text-decoration: line-through; }
+  .tdo-tag {
+    font-size: 10.5px; color: var(--study); background: var(--study-bg);
+    border-radius: 999px; padding: 1px 8px; flex-shrink: 0; white-space: nowrap;
+  }
+  .tdoRow.done .tdo-tag { opacity: 0.6; }
+  .tdo-del, .cd-del {
+    border: none; background: none; color: var(--text2); cursor: pointer; flex-shrink: 0;
+    width: 24px; height: 24px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .tdo-del:hover, .cd-del:hover { color: var(--danger); background: rgba(198, 93, 93, 0.1); }
+  #todoFoot { display: flex; gap: 8px; justify-content: space-between; margin-top: 10px; }
+
+  /* ===== 倒数日面板 ===== */
+  #cdOverlay {
+    position: fixed; inset: 0; z-index: 94; background: rgba(30, 25, 20, 0.45);
+    backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center;
+    padding: 24px 16px;
+  }
+  #cdOverlay.open { display: flex; }
+  #cdPanel {
+    background: var(--card); border-radius: 20px; width: min(460px, 100%);
+    max-height: 100%; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  #cdHead { display: flex; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+  #cdHead h2 { font-size: 17px; }
+  #cdBody { padding: 14px 20px 18px; overflow-y: auto; flex: 1; min-height: 0; }
+  #cdErr { color: var(--danger); font-size: 12px; min-height: 16px; margin-bottom: 4px; }
+  .cdRow {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--card2);
+    border-radius: 12px; margin-bottom: 8px;
+  }
+  .cdRow.past { opacity: 0.55; }
+  .cdRow .cd-main { flex: 1; min-width: 0; }
+  .cdRow .cd-name { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cdRow .cd-date { font-size: 11.5px; color: var(--text2); font-family: "SF Mono", Menlo, monospace; margin-top: 1px; }
+  .cd-chip {
+    font-size: 11.5px; font-weight: 600; color: var(--study); background: var(--study-bg);
+    border-radius: 999px; padding: 3px 10px; flex-shrink: 0; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .cd-chip.today { color: #fff; background: var(--study); }
+  .cd-chip.past { color: var(--text2); background: var(--card); }
+
+  /* 新弹层的紧凑适配（与设置/统计面板一致） */
+  body.bar #todoOverlay, body.bar #cdOverlay { padding: 10px; }
+  body.bar #todoPanel, body.bar #cdPanel { width: 100%; border-radius: 14px; }

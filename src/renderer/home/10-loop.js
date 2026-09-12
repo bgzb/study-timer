@@ -11,7 +11,8 @@ let currentFillEl = null;
 function rebuildDay() {
   today = getToday();
   modeInfo = detectMode(today);
-  day = expandDay(mergeExtraSessions(state.schedules[modeInfo.mode] || [], (state.extra || {})[today.str] || []), state.skips[today.str] || []);
+  const wd = windDownActiveOf(today.str);
+  day = expandDay(mergeExtraSessions(state.schedules[modeInfo.mode] || [], (state.extra || {})[today.str] || []), state.skips[today.str] || [], wd ? wd.at : null);
   renderHeader();
   renderTimeline();
 }
@@ -43,7 +44,7 @@ function renderPhase(st) {
     setIconLabel(label, isStudy ? 'study' : 'break', (isStudy ? t('studying') : t('breakTime')) + ' · ' + st.session.name);
     cd.textContent = fmtCountdown(st.block.effEnd - now);
     range.textContent = blockRangeText(st.block);
-    const nbAny = day.blocks.find((b) => b.effEnd > st.block.effEnd + 0.5);
+    const nbAny = day.blocks.find((b) => !b.off && b.effEnd > st.block.effEnd + 0.5);
     if (nbAny) {
       const n = nbAny;
       next.textContent = t('nextBlock')(n.type === 'study' ? t('studyWord') : t('breakWord'), fmtClock(n.start));
@@ -68,12 +69,20 @@ function renderPhase(st) {
     next.textContent = t('nextSessionStudy')(st.next.name, fmtClock(st.next.start));
     bar.style.width = '0%';
   } else {
-    setIconLabel(label, 'done', t('doneToday'));
+    const wd = windDownActiveOf(today.str);
     const stats = computeStats(day);
     cd.textContent = t('doneWord');
-    range.textContent = t('doneStats')(stats.done, stats.total, stats.focusMin);
-    next.textContent = t('restWell');
     bar.style.width = '100%';
+    if (wd) {
+      // 收工提前结束今天：统计只含收工前的真实学习（含收工后加钟），剩余计划时段已剔除
+      setIconLabel(label, 'done', t('windDownDone'));
+      range.textContent = t('windDownStats')(fmtClock(wd.at), stats.done, stats.total, stats.focusMin);
+      next.textContent = t('windDownHint');
+    } else {
+      setIconLabel(label, 'done', t('doneToday'));
+      range.textContent = t('doneStats')(stats.done, stats.total, stats.focusMin);
+      next.textContent = t('restWell');
+    }
   }
   document.title = cd.textContent + ' · ' + t('appName');
 }
@@ -145,13 +154,13 @@ function renderTimeline() {
   for (const x of (state.skips[today.str] || [])) skipMap[x.key] = x;
   let prevBlock = null;
   for (const b of day.blocks) {
-    // 间隙段（跳过截断/会话之间）携带来源块，便于悬停显示跳过原因
+    // 间隙段（跳过截断/会话之间）携带来源块，便于悬停显示跳过原因（收工截断不是跳过，不显示理由）
     if (b.start > cursor) {
-      const skp = prevBlock && prevBlock.effEnd < prevBlock.end ? prevBlock : null;
+      const skp = prevBlock && prevBlock.effEnd < prevBlock.end && !prevBlock.wd ? prevBlock : null;
       items.push({ type: 'gap', start: cursor, end: b.start, from: skp, reason: skp ? (skipMap[skp.key] || {}).reason : undefined });
     }
-    const active = b.start <= now && now < b.effEnd;
-    items.push({ type: b.type, start: b.start, end: b.effEnd, block: b, active });
+    const active = !b.off && b.start <= now && now < b.effEnd;
+    items.push({ type: b.type, start: b.start, end: b.effEnd, block: b, active, off: !!b.off });
     if (active) curBlock = b;
     cursor = b.effEnd;
     prevBlock = b;
@@ -164,10 +173,11 @@ function renderTimeline() {
   for (const it of items) {
     const el = document.createElement('div');
     el.className = 'tl-seg tl-' + it.type;
-    if (it.type !== 'gap') el.className += (it.end <= now ? ' tl-past' : '') + (it.active ? ' tl-current' : '');
+    if (it.type !== 'gap') el.className += (it.off ? ' tl-off' : (it.end <= now ? ' tl-past' : '') + (it.active ? ' tl-current' : ''));
     el.style.flexGrow = String(Math.max(1, it.end - it.start));
     if (it.block) {
-      setTimelineTip(el, day.sess[it.block.sIdx].name + ' ' + fmtClock(it.block.start) + '–' + fmtClock(it.block.effEnd) + ' ' +
+      if (it.off) setTimelineTip(el, t('offBlockTip'));
+      else setTimelineTip(el, day.sess[it.block.sIdx].name + ' ' + fmtClock(it.block.start) + '–' + fmtClock(it.block.effEnd) + ' ' +
         (it.block.type === 'study' ? t('studyWord') : t('breakWord')) + ' ' + it.block.minutes + t('min'));
     } else if (it.from) {
       setTimelineTip(el, t('skippedTag') + (it.reason ? ' · ' + it.reason : ''));
@@ -206,11 +216,26 @@ function renderStats() {
   $('#statsText').innerHTML = t('stats')(stats.done, stats.total, stats.focusMin);
   const st = currentState(day);
   $('#skipBtn').disabled = !(st.phase === 'study' || st.phase === 'break');
+  // 收工按钮双态：未收工 = 收工（学习/休息/间隙/等待均可，未打卡禁用）；收工生效中 = 撤销收工
+  const wdBtn = $('#windDownBtn');
+  if (windDownActiveOf(today.str)) {
+    wdBtn.innerHTML = iconText('reset', t('windDownUndo'));
+    wdBtn.disabled = false;
+  } else {
+    wdBtn.innerHTML = iconText('done', t('windDown'));
+    wdBtn.disabled = gateActiveToday() || !(st.phase === 'study' || st.phase === 'break' || st.phase === 'gap' || st.phase === 'wait');
+  }
   // 当天已结束但总结未填写（也未跳过）时，抽屉里的手记图标挂小圆点提醒（未打卡的休息日不打扰）
   const journalItem = $('#toolDrawer .td-item[data-tool="journal"]');
   if (journalItem) journalItem.classList.toggle(
     'pending',
     st.phase === 'done' && !gateActiveToday() && !state.journal[today.str] && !state.summaryDismissed[today.str]
+  );
+  // 今天还有未完成待办时，待办条目挂小圆点
+  const todoItem = $('#toolDrawer .td-item[data-tool="todo"]');
+  if (todoItem) todoItem.classList.toggle(
+    'pending',
+    StudyTimerShared.unfinishedTodosOf(state.todos, today.str).length > 0
   );
 }
 
@@ -263,4 +288,5 @@ function tick() {
     currentFillEl.el.style.width = (total > 0 ? Math.min(100, ((nowSeconds() - b.start) / total) * 100) : 100) + '%';
   }
   updateTray(st);
+  if (typeof renderCdHomeChip === 'function') renderCdHomeChip(); // 主页倒数徽标（跨天/增删后刷新）
 }

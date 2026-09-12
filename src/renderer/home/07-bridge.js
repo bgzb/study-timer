@@ -27,8 +27,21 @@ function updateTray(st) {
     title = '▸' + fmtClock(st.next.start);
     tip = t('waitTip')(st.next.name, fmtClock(st.next.start));
   } else {
-    title = t('doneWord');
-    tip = t('doneToday');
+    // 收工生效中：托盘明示提前收工（收工后仍可加钟，加钟时段会回到倒计时显示）
+    if (windDownActiveOf(today.str)) {
+      title = t('windDownDone');
+      tip = t('windDownDone') + ' · ' + t('windDownHint');
+    } else {
+      title = t('doneWord');
+      tip = t('doneToday');
+    }
+  }
+  // 倒数日托盘后缀（cdTray 开关开启时）：追加最近未到期项，如 ' ⏳87'
+  const cdSuffix = StudyTimerShared.trayCountdownSuffix(state.countdowns, today.str, state.cdTray);
+  if (cdSuffix) {
+    title += cdSuffix;
+    const near = StudyTimerShared.sortedCountdowns(state.countdowns, today.str).find((c) => c.days >= 0);
+    if (near) tip += ' · ⏳' + near.name;
   }
   if (title !== lastTrayTitle) {
     lastTrayTitle = title;

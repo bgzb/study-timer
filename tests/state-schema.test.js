@@ -36,3 +36,11 @@ test('achievement points ledger gets safe defaults without touching saved data',
   assert.deepEqual(broken.achievements.points, {});
   assert.deepEqual(defaultState().achievements, { unlockedAt: {}, points: {} });
 });
+
+test('wind-down ledger gets safe defaults without touching saved data', () => {
+  const state = ensureState({ windDown: { '2026-09-12': [{ at: 100 }] } });
+  assert.deepEqual(state.windDown, { '2026-09-12': [{ at: 100 }] }); // 已有收工记录保持原样
+  const broken = ensureState({ windDown: 'bad' });
+  assert.deepEqual(broken.windDown, {});   // 非法类型回落默认
+  assert.deepEqual(defaultState().windDown, {});
+});

@@ -298,6 +298,66 @@ function renderHeatView() {
   return html;
 }
 
+/* ---------------- 应用：前台应用使用 ---------------- */
+let stAppsRange = 'today';  // 'today' | '7d' | 'month' | 'year' | 'all'
+function stAppsWindow() {
+  if (stAppsRange === 'today') return { from: today.str, to: today.str };
+  if (stAppsRange === '7d') return { from: addDaysStr(today.str, -6), to: today.str };
+  if (stAppsRange === 'month') return { from: today.str.slice(0, 7) + '-01', to: today.str };
+  if (stAppsRange === 'year') return { from: today.y + '-01-01', to: today.str };
+  const keys = Object.keys((getAppUsage() || {}).days || {})
+    .concat(Object.keys(state.dailyStats || {})).sort();
+  return { from: keys.length ? keys[0] : today.str, to: today.str };
+}
+function stAppsTipHtml(a) {
+  const total = a.total > 0 ? a.total : 1;
+  const row = (label, v) => '<div class="tt-s">' + label + ' ' + fmtMinShort(v)
+    + ' · ' + Math.round((v / total) * 100) + '%</div>';
+  return '<div class="tt-k">' + escHtml(a.name) + '</div><div class="tt-v">' + fmtMinShort(a.total) + '</div>'
+    + row(t('au_study'), a.study) + row(t('au_brk'), a.brk) + row(t('au_other'), a.other);
+}
+function renderAppsView() {
+  const AUM = StudyTimerShared.appUsage;
+  const deps = { modeFor: StudyTimerShared.modeFor, mergeExtraSessions: StudyTimerShared.mergeExtraSessions, expandDay: StudyTimerShared.expandDay };
+  const win = stAppsWindow();
+  const agg = AUM.aggregate(getAppUsage(), state, win.from, win.to, deps);
+
+  let html = '<div class="stTrendHead"><div class="stPillSeg">'
+    + [['today', 'au_rangeToday'], ['7d', 'au_range7'], ['month', 'au_rangeMonth'], ['year', 'in_rangeYear'], ['all', 'in_rangeAll']].map((r) =>
+      '<button data-act="apps-range" data-range="' + r[0] + '"' + (stAppsRange === r[0] ? ' class="active"' : '') + '>' + t(r[1]) + '</button>').join('')
+    + '</div></div>';
+
+  if (!(agg.trackMin > 0)) {
+    html += '<div class="stEmpty">' + t('au_empty') + '</div>';
+    return html;
+  }
+
+  html += '<div class="stSummary">'
+    + stCell(fmtMinShort(agg.trackMin), t('au_track'))
+    + stCell(agg.days + ' ' + t('dayUnit'), t('au_days'))
+    + '<div class="cell"><div class="v"><i class="auDot auS"></i>' + fmtMinShort(agg.cats.study) + '</div><div class="k">' + t('au_study') + '</div></div>'
+    + '<div class="cell"><div class="v"><i class="auDot auB"></i>' + fmtMinShort(agg.cats.brk) + '</div><div class="k">' + t('au_brk') + '</div></div>'
+    + '<div class="cell"><div class="v"><i class="auDot auO"></i>' + fmtMinShort(agg.cats.other) + '</div><div class="k">' + t('au_other') + '</div></div>'
+    + '</div>';
+
+  const top = agg.apps.slice(0, 12);
+  const maxA = Math.max(1, ...top.map((a) => a.total));
+  html += '<div class="stLogTitle" style="margin-top:16px">' + t('au_appList') + '</div><div class="auList">';
+  top.forEach((a, i) => {
+    const seg = (v, cls) => {
+      if (!(v > 0)) return '';
+      const pct = Math.max(2, Math.round((v / maxA) * 100));
+      return '<i class="' + cls + '" style="width:' + pct + '%"' + stWAttr(pct) + '></i>';
+    };
+    html += '<div class="auItem stFade" style="--d:' + (i * 30) + 'ms" data-tip="' + escHtml(stAppsTipHtml(a)) + '">'
+      + '<div class="r1"><span class="nm">' + escHtml(a.name) + '</span><span class="ct">' + fmtMinShort(a.total) + '</span></div>'
+      + '<div class="auBar">' + seg(a.study, 'auS') + seg(a.brk, 'auB') + seg(a.other, 'auO') + '</div></div>';
+  });
+  html += '</div>';
+  if (agg.apps.length > top.length) html += '<div class="auMore">' + tf('au_more', agg.apps.length - top.length) + '</div>';
+  return html;
+}
+
 /* ---------------- 洞察 ---------------- */
 function stInsWindow() {
   if (stInsRange === 'year') return { from: today.y + '-01-01', to: today.str };

@@ -24,7 +24,6 @@ contextBridge.exposeInMainWorld('studyTimer', {
   // 菜单栏面板
   hideBar: () => ipcRenderer.send('bar:hide'),
   resizeBar: (w, h) => ipcRenderer.send('bar:resize', { w, h }),
-  setBarVibrancy: (on) => ipcRenderer.send('bar:vibrancy', on),
   // 侧边工具抽屉展开时向右加宽窗口、收起时恢复（w 为 null 表示恢复）
   setDrawerWidth: (w) => ipcRenderer.send('drawer:size', { w: w == null ? null : Math.round(w) }),
   // 每日总结窗口（date 为 'YYYY-MM-DD'；focus=true 抢焦点，false 柔和弹出）

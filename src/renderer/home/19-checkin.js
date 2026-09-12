@@ -29,7 +29,7 @@ function checkIn(fromSec) {
   const recorded = (((state.dailyStats || {})[today.str]) || {}).focusMin || 0;
   if (recorded > 0) {
     const edits = (state.blocks || {})[today.str] || {};
-    const prospect = StudyTimerShared.computeStats(day, edits, now, today.str, from).focusMin;
+    const prospect = StudyTimerShared.computeStats(day, edits, now, today.str, from, windDownList(today.str)).focusMin;
     if (prospect < recorded) {
       if (!confirm(tf('ckOverwriteConfirm', recorded, prospect, fmtClock(from)))) return;
     }

@@ -6,6 +6,7 @@ const path = require('path');
 function start(projectRoot) {
   const { createSharedStateStore } = require('./shared-state-store');
   const { createDutyCoordinator } = require('./duty-coordinator');
+  const { createAppUsageTracker } = require('./app-usage-tracker');
 
 /* ==================== 运行模式 ====================
  * 同一套代码打包为两个独立 App（仿 codeburn / codeburnmenu）：
@@ -58,6 +59,8 @@ if (!gotLock) {
       startDutyProbe();
     }
     registerNotificationsOnce();
+    // 前台应用使用采集：跟提醒职责走同一互斥（菜单栏端在跑时桌面端不采）
+    createAppUsageTracker({ sharedState, duty }).start();
   });
 
   app.on('window-all-closed', () => {
@@ -531,11 +534,6 @@ ipcMain.on('drawer:size', (_e, payload) => {
       if (recenterOnRestore) positionBarWindow();
     }
   });
-});
-ipcMain.on('bar:vibrancy', (_e, on) => {
-  if (barWin && !barWin.isDestroyed()) {
-    try { barWin.setVibrancy(on ? 'under-window' : null); } catch (e) {}
-  }
 });
 }
 

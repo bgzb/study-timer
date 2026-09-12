@@ -13,6 +13,7 @@
   <header>
     <span id="dateLine">—</span>
     <button class="badge badge-weekend" id="modeBadge">—</button>
+    <button id="cdHomeChip" class="hidden"></button>
   </header>
 
   <div id="modePopover">
@@ -68,6 +69,7 @@
     <span id="statsActions">
       <button id="extraBtn"><span data-icon="add"></span><span data-i18n="extraBtn">加钟</span></button>
       <button id="skipBtn"><span data-icon="skip"></span><span data-i18n="skip">跳过当前块</span></button>
+      <button id="windDownBtn"></button>
     </span>
   </div>
 </div>
@@ -227,6 +229,10 @@
             <label class="switch"><input type="checkbox" id="autostartSwitch"><span class="slider"></span></label>
           </div>
           <div class="switchRow">
+            <div class="sw-label"><div class="t" data-i18n="appUsageT">记录前台应用</div><div class="d" data-i18n="appUsageD">统计学习与休息时段各应用的使用时长，仅保存在本机，统计页"应用"视图查看</div></div>
+            <label class="switch"><input type="checkbox" id="appUsageSwitch"><span class="slider"></span></label>
+          </div>
+          <div class="switchRow">
             <div class="sw-label"><div class="t" data-i18n="restartT">重启应用</div><div class="d" data-i18n="restartD">退出并重新启动；界面或托盘显示异常时使用</div></div>
             <button class="ghostBtn" id="restartBtn" data-i18n="restartBtnL">重启</button>
           </div>
@@ -250,7 +256,7 @@
   </div>
 </div>
 
-<!-- 学习统计：五视图（总览/趋势/热力/洞察/成就）+ 日详情/报告滑入层 -->
+<!-- 学习统计：六视图（总览/趋势/热力/洞察/应用/成就）+ 日详情/报告滑入层 -->
 <div id="statsOverlay">
   <div id="statsPanel">
     <div id="statsHead">
@@ -266,6 +272,7 @@
       <button data-range="trend" data-i18n="stats_trend">趋势</button>
       <button data-range="heat" data-i18n="stats_heat">热力</button>
       <button data-range="insights" data-i18n="stats_insights">洞察</button>
+      <button data-range="apps" data-i18n="stats_apps">应用</button>
       <button data-range="awards" data-i18n="stats_awards">成就</button>
     </div>
     <div id="statsBody"></div>
@@ -286,6 +293,56 @@
       <button id="closeJournal" aria-label="关闭"><span data-icon="close"></span></button>
     </div>
     <div id="journalBody"></div>
+  </div>
+</div>
+
+<!-- 今日待办 -->
+<div id="todoOverlay">
+  <div id="todoPanel">
+    <div id="todoHead">
+      <h2 data-i18n="todoTitle">今日待办</h2>
+      <span id="todoCount"></span>
+      <button id="closeTodo" aria-label="关闭"><span data-icon="close"></span></button>
+    </div>
+    <div id="todoBody">
+      <div class="todoAddRow">
+        <input type="text" id="todoInput" maxlength="80" data-i18n-ph="todoAddPh">
+        <select id="todoBlockSel" aria-label="挂到时间块"></select>
+        <button id="todoAddBtn" class="primaryBtn" data-i18n="add">添加</button>
+      </div>
+      <div id="todoList"></div>
+      <div id="todoFoot">
+        <button class="ghostBtn" id="todoCopyPlan"><span data-icon="tag"></span><span data-i18n="todoCopyPlan">复制为计划</span></button>
+        <button class="ghostBtn" id="todoClearDone"><span data-icon="delete"></span><span data-i18n="todoClearDone">清除已完成</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 倒数日 -->
+<div id="cdOverlay">
+  <div id="cdPanel">
+    <div id="cdHead">
+      <h2 data-i18n="cdTitle">倒数日</h2>
+      <button id="closeCd" aria-label="关闭"><span data-icon="close"></span></button>
+    </div>
+    <div id="cdBody">
+      <div class="inline-form">
+        <input type="text" id="cdName" maxlength="24" data-i18n-ph="cdNamePh" style="flex:1;min-width:120px">
+        <input type="date" id="cdDate">
+        <button id="cdAddBtn" class="primaryBtn" data-i18n="add">添加</button>
+      </div>
+      <div id="cdErr" role="alert"></div>
+      <div id="cdList"></div>
+      <div class="switchRow">
+        <div class="sw-label"><div class="t" data-i18n="cdTrayLabel">托盘显示最近倒数</div><div class="d" data-i18n="cdTrayDesc"></div></div>
+        <label class="switch"><input type="checkbox" id="cdTraySwitch"><span class="slider"></span></label>
+      </div>
+      <div class="switchRow">
+        <div class="sw-label"><div class="t" data-i18n="cdHomeLabel">在主页显示</div><div class="d" data-i18n="cdHomeDesc"></div></div>
+        <label class="switch"><input type="checkbox" id="cdHomeSwitch"><span class="slider"></span></label>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -314,6 +371,23 @@
   </div>
 </div>
 
+<!-- 收工确认 -->
+<div id="windDownOverlay">
+  <div id="windDownPanel">
+    <div id="windDownHead">
+      <h2 data-i18n="windDownTitle">今天收工？</h2>
+      <button id="closeWindDown" aria-label="关闭"><span data-icon="close"></span></button>
+    </div>
+    <div id="windDownBody">
+      <div id="windDownHint" data-i18n="windDownHintBody">已学习的时间会照常记录；今天剩余的时段不计入应完成，也不会标记为跳过。收工后仍可随时加钟继续学习。</div>
+      <div id="windDownActions">
+        <button id="windDownCancel" data-i18n="cancel">取消</button>
+        <button id="windDownConfirm" data-i18n="windDownConfirm">确认收工</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <script src="src/renderer/shared/namespace.js"></script>
 <script src="src/renderer/shared/icons.js"></script>
@@ -324,13 +398,15 @@
 <script src="src/renderer/shared/holiday-model.js"></script>
 <script src="src/renderer/shared/schedule-model.js"></script>
 <script src="src/renderer/shared/timeline-model.js"></script>
-<script src="src/renderer/shared/theme-model.js"></script>
 <script src="src/renderer/shared/stats-model.js"></script>
 <script src="src/renderer/shared/session-model.js"></script>
 <script src="src/renderer/shared/stats-insights.js"></script>
+<script src="src/renderer/shared/app-usage-model.js"></script>
 <script src="src/renderer/shared/svg-charts.js"></script>
 <script src="src/renderer/shared/skip-model.js"></script>
 <script src="src/renderer/shared/quote-model.js"></script>
+<script src="src/renderer/shared/todo-model.js"></script>
+<script src="src/renderer/shared/countdown-model.js"></script>
 <script src="src/renderer/shared/tool-registry.js"></script>
 <script src="src/renderer/home/00-content.js"></script>
 <script src="src/renderer/home/01-mode.js"></script>
@@ -356,6 +432,8 @@
 <script src="src/renderer/home/17-tool-drawer.js"></script>
 <script src="src/renderer/home/18-holiday-sync.js"></script>
 <script src="src/renderer/home/19-checkin.js"></script>
+<script src="src/renderer/home/20-todo.js"></script>
+<script src="src/renderer/home/21-countdown.js"></script>
 
 </body>
 </html>

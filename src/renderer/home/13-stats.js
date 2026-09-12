@@ -1,11 +1,11 @@
 /* ==================== 学习统计面板（控制器） ==================== */
-/* 五视图（总览/趋势/热力/洞察/成就）+ 日详情/报告滑入层。
+/* 六视图（总览/趋势/热力/洞察/应用/成就）+ 日详情/报告滑入层。
    视图渲染在 13-stats-views.js / 13-stats-awards.js；本文件负责：
    分发、进出场与图表动画、自定义 tooltip、事件路由、防抖刷新。
    对外保留 openStats / closeStatsPanel / renderStatsPanel / refreshStatsPanelIfStale。 */
 
 const statsOverlay = $('#statsOverlay');
-const STATS_RANGES = ['overview', 'trend', 'heat', 'insights', 'awards'];
+const STATS_RANGES = ['overview', 'trend', 'heat', 'insights', 'apps', 'awards'];
 let statsRange = 'overview';
 let lastPanelFocus = -1;
 let lastRangeIdx = 0;
@@ -63,6 +63,7 @@ function statsViewHtml() {
   if (statsRange === 'trend') return renderTrendView();
   if (statsRange === 'heat') return renderHeatView();
   if (statsRange === 'insights') return renderInsightsView();
+  if (statsRange === 'apps') return renderAppsView();
   if (statsRange === 'awards') return renderAwardsView();
   return renderOverviewView();
 }
@@ -113,14 +114,14 @@ function stAnimateIn(root) {
   root.querySelectorAll('.stFill[data-h], .stBars .bar[data-h], .stTypeCol .bar[data-h], .stMiniBars .mb[data-h]').forEach((el, i) => {
     el.style.transitionDelay = Math.min(i * 18, 400) + 'ms';
   });
-  root.querySelectorAll('.stActItem .fill[data-w], .stReasonRow .bar[data-w]').forEach((el, i) => {
+  root.querySelectorAll('.stActItem .fill[data-w], .stReasonRow .bar[data-w], .auBar i[data-w]').forEach((el, i) => {
     el.style.transitionDelay = Math.min(i * 40, 400) + 'ms';
   });
   requestAnimationFrame(() => requestAnimationFrame(() => {
     root.querySelectorAll('.stFill[data-h], .stBars .bar[data-h], .stTypeCol .bar[data-h], .stMiniBars .mb[data-h]').forEach((el) => {
       el.style.height = el.dataset.h + '%';
     });
-    root.querySelectorAll('.stActItem .fill[data-w], .stReasonRow .bar[data-w]').forEach((el) => {
+    root.querySelectorAll('.stActItem .fill[data-w], .stReasonRow .bar[data-w], .auBar i[data-w]').forEach((el) => {
       el.style.width = el.dataset.w + '%';
     });
     // 全年热力图滚动到本周
@@ -233,6 +234,7 @@ function statsAction(act, el, e) {
     case 'heat-prev':
     case 'heat-next':
     case 'ins-range':
+    case 'apps-range':
     case 'reward-add':
     case 'reward-del':
     case 'reward-redeem':

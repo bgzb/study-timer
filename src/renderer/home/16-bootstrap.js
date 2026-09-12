@@ -11,7 +11,7 @@
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) adopted = JSON.parse(raw);
   } catch (e) {}
-  bridge.saveAll({ state: adopted || state, barTheme: all.barTheme || barTheme, migratedLocal: true });
+  bridge.saveAll({ state: adopted || state, migratedLocal: true });
   if (adopted) state = loadState(); // 迁移 adopted 刚写入共享文件，重读回来替换默认值
 })();
 
