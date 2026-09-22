@@ -340,6 +340,18 @@ function renderAppsView() {
     + '<div class="cell"><div class="v"><i class="auDot auO"></i>' + fmtMinShort(agg.cats.other) + '</div><div class="k">' + t('au_other') + '</div></div>'
     + '</div>';
 
+  // 洞察两行：学习时段切换率 / 最长连续单应用
+  const sw = AUM.switchStatsOf(getAppUsage(), state, win.from, win.to, deps);
+  if (sw.ratePerHour != null) {
+    html += '<div class="stPeakLine auInsight"><i class="dot s1"></i>'
+      + (sw.switches > 0 ? tf('au_switchRate', sw.ratePerHour) : t('au_switchZero')) + '</div>';
+  }
+  const solo = AUM.longestSoloOf(getAppUsage(), state, win.from, win.to, deps);
+  if (solo.app) {
+    const soloName = escHtml((getAppUsage() || {}).apps?.[solo.app] || solo.app);
+    html += '<div class="stPeakLine auInsight"><i class="dot s2"></i>' + tf('au_longestSolo', fmtMinShort(solo.min), soloName) + '</div>';
+  }
+
   const top = agg.apps.slice(0, 12);
   const maxA = Math.max(1, ...top.map((a) => a.total));
   html += '<div class="stLogTitle" style="margin-top:16px">' + t('au_appList') + '</div><div class="auList">';
@@ -356,6 +368,42 @@ function renderAppsView() {
   html += '</div>';
   if (agg.apps.length > top.length) html += '<div class="auMore">' + tf('au_more', agg.apps.length - top.length) + '</div>';
   return html;
+}
+
+/* 日详情层"应用泳道"：当天前台应用按 24h 展开，每段按应用着色。
+   颜色按当日用量排名分配（Top 应用各自一色、图例就在旁边），fallback 走 colorClassOf。
+   跨类别的段先用 classifyRange 切开，tooltip 报应用名/时间/类别。
+   当天无使用数据返回空串，调用方整条隐藏。 */
+function stAppStripHtml(dateStr) {
+  const AUM = StudyTimerShared.appUsage;
+  const au = (typeof getAppUsage === 'function' ? getAppUsage() : null) || {};
+  const daySegs = (au.days || {})[dateStr];
+  if (!daySegs || !daySegs.length) return '';
+  const buckets = AUM.dayBucketsOf(state, dateStr, { modeFor: StudyTimerShared.modeFor, mergeExtraSessions: StudyTimerShared.mergeExtraSessions, expandDay: StudyTimerShared.expandDay });
+  const catLabel = { study: t('au_study'), brk: t('au_brk'), other: t('au_other') };
+  // 先按当日各应用总时长排名，排名即色档：Top 10 互不撞色
+  const perApp = {};
+  for (const seg of daySegs) perApp[seg.b] = (perApp[seg.b] || 0) + (seg.e - seg.s);
+  const rankOf = {};
+  Object.keys(perApp).sort((a, b) => perApp[b] - perApp[a]).forEach((bid, i) => { rankOf[bid] = 'au-c' + (i % 10); });
+  const colorOf = (bid) => rankOf[bid] || AUM.colorClassOf(bid);
+  let segs = '';
+  for (const seg of daySegs) {
+    const name = (au.apps || {})[seg.b] || seg.b;
+    for (const [s, e, cat] of AUM.classifyRange(seg.s, seg.e, buckets)) {
+      if (e <= s) continue;
+      const l = (s / 86400) * 100, w = Math.max(0.25, ((e - s) / 86400) * 100);
+      const tip = '<div class="tt-k">' + escHtml(name) + '</div>'
+        + '<div class="tt-v">' + fmtClock(s) + ' – ' + fmtClock(e) + '</div>'
+        + '<div class="tt-s">' + catLabel[cat] + '</div>';
+      segs += '<i class="' + colorOf(seg.b) + '" style="left:' + l.toFixed(2) + '%;width:' + w.toFixed(2) + '%"'
+        + ' data-tip="' + escHtml(tip) + '"></i>';
+    }
+  }
+  const legend = Object.keys(perApp).sort((a, b) => perApp[b] - perApp[a]).slice(0, 5)
+    .map((bid) => '<span><i class="' + colorOf(bid) + '"></i>' + escHtml((au.apps || {})[bid] || bid) + '</span>').join('');
+  return '<div class="stDayStrip auStrip">' + segs + '</div>'
+    + (legend ? '<div class="auLegend">' + legend + '</div>' : '');
 }
 
 /* ---------------- 洞察 ---------------- */

@@ -359,6 +359,25 @@ body.bar .stBadges { grid-template-columns: repeat(3, 1fr); }
 .stDayStrip .now { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--text2); }
 .stDayStripX { display: flex; justify-content: space-between; font-size: 9px; color: var(--text2); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
 
+/* 应用泳道：学习条下方按应用着色的前台使用条 + 图例 */
+.auStrip { height: 14px; margin-top: 3px; }
+.auStrip i { opacity: 0.85; min-width: 1px; background: var(--au-c, var(--study)); }
+.auStrip i:hover { opacity: 1; }
+.auLegend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 2px 0 8px; font-size: 10px; color: var(--text2); }
+.auLegend span i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; background: var(--au-c, var(--text2)); }
+/* 色档只定义 --au-c 变量：.stDayStrip i 的背景（特异性更高）会盖掉单类名的
+   background 声明，变量由元素自身的 .au-cN 类提供、不受特异性影响 */
+.au-c0 { --au-c: #e07b39; }
+.au-c1 { --au-c: #2f9e77; }
+.au-c2 { --au-c: #5b8def; }
+.au-c3 { --au-c: #c65d5d; }
+.au-c4 { --au-c: #9a6dd7; }
+.au-c5 { --au-c: #d4a017; }
+.au-c6 { --au-c: #3fb8af; }
+.au-c7 { --au-c: #d77ba0; }
+.au-c8 { --au-c: #7a8b99; }
+.au-c9 { --au-c: #8bc34a; }
+
 .stJCard { background: var(--card2); border-radius: 13px; padding: 11px 13px; margin: 10px 0; }
 .stJCard .r1 { display: flex; align-items: center; gap: 8px; }
 .stJCard .headline { font-size: 13px; font-weight: 600; margin: 6px 0 2px; }

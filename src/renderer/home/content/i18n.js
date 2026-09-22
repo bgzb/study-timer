@@ -194,6 +194,8 @@ const I18N = {
     au_rangeToday: '当天', au_range7: '近七天', au_rangeMonth: '当月',
     au_track: '追踪时长', au_days: '覆盖天数', au_study: '学习时段', au_brk: '短休', au_other: '大休·其他',
     au_appList: '应用时长榜', au_more: (n) => '还有 ' + n + ' 个应用…',
+    au_switchRate: (n) => '学习时段切换 ' + n + ' 次/小时', au_switchZero: '学习时段全程零切换',
+    au_longestSolo: (m, app) => '最长连续 ' + m + ' · ' + app,
     au_empty: '暂无应用使用记录 · 安装版在后台自动采集前台应用（息屏、锁屏、离开时不记录），可到 设置→应用 里开启',
     // 积分与成就
     rewardsTitle: '奖励兑换', rewardNamePh: '奖励名称，如 看场电影', rewardCostPh: '积分',
@@ -443,6 +445,8 @@ const I18N = {
     au_rangeToday: 'Today', au_range7: '7d', au_rangeMonth: 'Month',
     au_track: 'Tracked', au_days: 'Days', au_study: 'Study', au_brk: 'Breaks', au_other: 'Off-schedule',
     au_appList: 'Top apps', au_more: (n) => 'and ' + n + ' more…',
+    au_switchRate: (n) => n + ' app switches/hr in study', au_switchZero: 'Zero switches during study',
+    au_longestSolo: (m, app) => 'Longest streak ' + m + ' · ' + app,
     au_empty: 'No app usage yet · the installed app records the foreground app in the background (paused while screen is off, locked, or away). Enable it in Settings → App',
     // points & achievements
     rewardsTitle: 'Rewards', rewardNamePh: 'Reward name, e.g. a movie', rewardCostPh: 'points',

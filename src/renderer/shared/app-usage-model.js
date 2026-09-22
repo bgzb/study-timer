@@ -186,5 +186,82 @@
     };
   }
 
-  return { appUsage: { DAY_SEC, MAX_KEEP_DAYS, MAX_SEGMENTS, normUsage, appendSegments, coalesceSegments, pruneUsage, mergeIntervals, dayBucketsOf, classifyRange, aggregate } };
+  /* ---------- 洞察指标 ---------- */
+
+  /* 学习时段内的应用切换次数：相邻两段 bundle 不同、且切点落在学习块内才计——
+     休息/大休时随便切应用不算分心。分母是学习块内"实际有记录"的时长
+     （全天排程做分母会让人不在电脑前时显得切换率很低） */
+  function switchStatsOf(usage, stateLike, from, to, deps) {
+    const u = normUsage(usage);
+    let switches = 0, studySec = 0;
+    const bucketCache = {};
+    for (const key of Object.keys(u.days)) {
+      if (key < from || key > to) continue;
+      const segs = u.days[key];
+      if (!segs.length) continue;
+      const buckets = bucketCache[key] || (bucketCache[key] = dayBucketsOf(stateLike, key, deps));
+      const study = buckets.study;
+      for (const seg of segs) {
+        for (const [a, b] of study) {
+          const s = Math.max(seg.s, a), e = Math.min(seg.e, b);
+          if (e > s) studySec += e - s;
+        }
+      }
+      const inStudy = (sec) => { for (const [a, b] of study) if (a <= sec && sec < b) return true; return false; };
+      for (let i = 1; i < segs.length; i++) {
+        if (segs[i].b !== segs[i - 1].b && segs[i].s < segs[i - 1].e + 1 && inStudy(segs[i].s)) switches++;
+      }
+    }
+    const studyHours = Math.round((studySec / 3600) * 10) / 10;
+    return { switches, studyHours, ratePerHour: studyHours > 0 ? Math.round((switches / studyHours) * 10) / 10 : null };
+  }
+
+  /* 学习时段内同一应用连续使用的最长分钟（未记录空隙=人离开=中断）。
+     实现：逐天把学习块与区间做有序扫描，应用相同且与上一段无缝（e == s）才延续 */
+  function longestSoloOf(usage, stateLike, from, to, deps) {
+    const u = normUsage(usage);
+    let best = { min: 0, app: null, date: null };
+    const bucketCache = {};
+    for (const key of Object.keys(u.days)) {
+      if (key < from || key > to) continue;
+      const segs = u.days[key];
+      if (!segs.length) continue;
+      const buckets = bucketCache[key] || (bucketCache[key] = dayBucketsOf(stateLike, key, deps));
+      const study = buckets.study;
+      // 每段与学习块求交得到带应用的学习子区间（有序：segs 与 study 均按起点有序）
+      const pieces = [];
+      for (const seg of segs) {
+        for (const [a, b] of study) {
+          const s = Math.max(seg.s, a), e = Math.min(seg.e, b);
+          if (e > s) pieces.push({ s, e, b: seg.b });
+        }
+      }
+      pieces.sort((x, y) => x.s - y.s || x.e - y.e);
+      let run = null;
+      for (const p of pieces) {
+        if (run && run.b === p.b && p.s <= run.e && p.s === run.e) run.e = Math.max(run.e, p.e);
+        else { if (run) best = pickLonger(best, run, key); run = { s: p.s, e: p.e, b: p.b }; }
+      }
+      if (run) best = pickLonger(best, run, key);
+    }
+    return { min: Math.round((best.min) * 10) / 10, app: best.app, date: best.date };
+  }
+  function pickLonger(best, run, date) {
+    const min = (run.e - run.s) / 60;
+    return min > best.min ? { min, app: run.b, date } : best;
+  }
+
+  /* 应用泳道/图例的确定性配色：bundleId 做 FNV-1a 哈希映射到 10 个色档（au-c0..au-c9），
+     同一应用永远同色，与渲染端 CSS 类名对应 */
+  function colorClassOf(bundleId) {
+    const bid = String(bundleId || '');
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < bid.length; i++) {
+      h ^= bid.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return 'au-c' + (h % 10);
+  }
+
+  return { appUsage: { DAY_SEC, MAX_KEEP_DAYS, MAX_SEGMENTS, normUsage, appendSegments, coalesceSegments, pruneUsage, mergeIntervals, dayBucketsOf, classifyRange, aggregate, switchStatsOf, longestSoloOf, colorClassOf } };
 });

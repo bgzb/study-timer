@@ -168,6 +168,60 @@ test('coalesceSegments：合并相邻同应用碎片，有间隙不合并、跨�
   assert.deepStrictEqual(days2['2026-09-12'], [{ s: 10, e: 40, b: 'com.a' }]);
 });
 
+test('switchStatsOf：只计学习时段内的跨应用切换，按小时归一', () => {
+  // 2026-09-09 周三：学习 9:00-9:40、9:50-10:30，短休 9:40-9:50
+  const usage = { days: { '2026-09-09': [
+    { s: 32400, e: 34800, b: 'com.a' },  // 9:00-9:40 学习
+    { s: 34800, e: 35400, b: 'com.b' },  // 短休切换 → 不计（切点 9:40 在学习块边界外）
+    { s: 35400, e: 36000, b: 'com.c' },  // 9:50 学习块开始 → 切点 35400 在学习块内 → 计 1
+    { s: 36000, e: 37800, b: 'com.a' }   // 10:00 学习内切换 → 计 1
+  ] } };
+  const r = M.switchStatsOf(usage, baseState(), '2026-09-09', '2026-09-09', deps);
+  assert.strictEqual(r.switches, 2);
+  assert.strictEqual(r.studyHours, 1.3); // (2400+600+1800)/3600
+  assert.strictEqual(r.ratePerHour, 1.5); // 2/1.333 → 1.5
+  // 空数据：rate 为 null 而不是 0/NaN
+  const empty = M.switchStatsOf({ days: {} }, baseState(), '2026-09-09', '2026-09-09', deps);
+  assert.deepStrictEqual(empty, { switches: 0, studyHours: 0, ratePerHour: null });
+  // 学习时段内带空隙的切换不计（人离开了）
+  const gapped = { days: { '2026-09-09': [
+    { s: 32400, e: 33600, b: 'com.a' }, { s: 34000, e: 34800, b: 'com.b' }
+  ] } };
+  assert.strictEqual(M.switchStatsOf(gapped, baseState(), '2026-09-09', '2026-09-09', deps).switches, 0);
+});
+
+test('longestSoloOf：学习时段内同应用最长连续，空隙与休息中断', () => {
+  const usage = { days: { '2026-09-09': [
+    { s: 32400, e: 34200, b: 'com.a' },  // 学习内 30 分钟
+    { s: 34200, e: 34800, b: 'com.b' },  // 学习内 10 分钟（换应用）
+    { s: 34800, e: 35400, b: 'com.b' },  // 短休 → 与上段之间跨界，不延续
+    { s: 35400, e: 37200, b: 'com.b' },  // 学习 9:50-10:20，30 分钟 → 与前段有空隙？无：34800-35400 是短休段，35400 无缝接学习
+    { s: 50000, e: 50600, b: 'com.c' }   // 大休，不计
+  ] } };
+  const r = M.longestSoloOf(usage, baseState(), '2026-09-09', '2026-09-09', deps);
+  // com.a 30 分钟 vs com.b：34200-34800（10 分，学习）+ 短休 + 35400-37200（30 分，学习）→ 休息中断，最长仍是 com.b 学习内 30 分钟
+  assert.strictEqual(r.min, 30);
+  assert.strictEqual(r.app, 'com.a'); // 平局取先出现者
+  // 跨休息不延续：b 在学习内的两段被短休隔开
+  const usage2 = { days: { '2026-09-09': [
+    { s: 33600, e: 34800, b: 'com.b' },  // 学习 9:40-9:50（10 分）+ 覆盖短休 34800-35400 + 学习 35400-37800
+    { s: 34800, e: 37800, b: 'com.b' }   // 整段 com.b：学习内有效 10+30=40 分且无缝 → 连续 40
+  ] } };
+  const r2 = M.longestSoloOf(usage2, baseState(), '2026-09-09', '2026-09-09', deps);
+  assert.strictEqual(r2.min, 40);
+  assert.strictEqual(r2.app, 'com.b');
+  const empty = M.longestSoloOf({ days: {} }, baseState(), '2026-09-09', '2026-09-09', deps);
+  assert.deepStrictEqual(empty, { min: 0, app: null, date: null });
+});
+
+test('colorClassOf：确定性且均匀分布', () => {
+  assert.strictEqual(M.colorClassOf('com.google.Chrome'), M.colorClassOf('com.google.Chrome'));
+  assert.ok(/^au-c\d$/.test(M.colorClassOf('com.a')));
+  const set = new Set(['com.a', 'com.b', 'com.c', 'com.d', 'com.e', 'com.f', 'com.g'].map(M.colorClassOf));
+  assert.ok(set.size > 1); // 不同输入不塌缩到同一色档
+  assert.strictEqual(M.colorClassOf(''), 'au-c1'); // 空串 = FNV 偏移基数取模
+});
+
 test('pruneUsage：只留近 MAX_KEEP_DAYS 天', () => {
   const usage = { days: { '2020-01-01': [{ s: 0, e: 10, b: 'com.a' }], '2026-09-12': [{ s: 0, e: 10, b: 'com.a' }] } };
   M.pruneUsage(usage, '2026-09-12');

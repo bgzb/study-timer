@@ -216,8 +216,9 @@ function openStatsDayLayer(dateStr) {
       + stCell(st ? st.skipped : 0, t('statSkipped'))
       + '</div>';
 
-    // 24 小时时间条：学习块填充，跳过块红显
+    // 24 小时时间条：学习块填充，跳过块红显；其下平行一条"应用泳道"（有采集数据时）
     const blocks = (st && st.blocks) || [];
+    let strips = '';
     if (blocks.length) {
       let segs = '';
       for (const b of blocks) {
@@ -225,9 +226,11 @@ function openStatsDayLayer(dateStr) {
         segs += '<i class="' + (b.sk ? 'sk' : '') + '" style="left:' + l.toFixed(2) + '%;width:' + w.toFixed(2) + '%"></i>';
       }
       const nowMark = dateStr === today.str ? '<div class="now" style="left:' + ((nowSeconds() / 86400) * 100).toFixed(2) + '%"></div>' : '';
-      html += '<div class="stDayStrip" data-tip="' + escHtml(t('todayTimeline')) + '">' + segs + nowMark + '</div>'
-        + '<div class="stDayStripX"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>';
+      strips += '<div class="stDayStrip" data-tip="' + escHtml(t('todayTimeline')) + '">' + segs + nowMark + '</div>';
     }
+    if (typeof stAppStripHtml === 'function') strips += stAppStripHtml(dateStr);
+    if (strips) html += strips
+      + '<div class="stDayStripX"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>';
 
     if (j) {
       const moodIco = j.mood >= 0 && j.mood < 5 ? iconSvg('mood' + j.mood, { size: 22 }) : iconSvg('journal', { size: 22 });
