@@ -16,7 +16,7 @@
     "dist:menu": "electron-builder --mac --arm64 --config builder-menu.json",
     "dist:all": "npm run dist && npm run dist:menu",
     "release:desktop": "GH_TOKEN=$(gh auth token) electron-builder --mac --config builder-release.json --publish always",
-    "release:menu": "GH_TOKEN=$(gh auth token) electron-builder --mac --config builder-menu-release.json --publish always",
+    "release:menu": "electron-builder --mac --config builder-menu-release.json --publish never && gh release upload v$(node -p \"require('./package.json').version\") --clobber dist/release/study-timer-menu-*-arm64.dmg dist/release/study-timer-menu-*-arm64.dmg.blockmap",
     "release": "npm run release:desktop && npm run release:menu"
   },
   "devDependencies": {
