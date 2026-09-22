@@ -1,0 +1,33 @@
+{
+  "appId": "com.yongzhao.study-timer",
+  "productName": "study-timer",
+  "directories": {
+    "output": "dist/release"
+  },
+  "files": [
+    "index.html",
+    "day.html",
+    "summary.html",
+    "main.js",
+    "preload.js",
+    "assets/**/*",
+    "src/**/*"
+  ],
+  "publish": {
+    "provider": "github",
+    "owner": "bgzb",
+    "repo": "study-timer"
+  },
+  "mac": {
+    "category": "public.app-category.productivity",
+    "icon": "assets/icon.png",
+    "identity": "-",
+    "hardenedRuntime": false,
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["arm64"]
+      }
+    ]
+  }
+}

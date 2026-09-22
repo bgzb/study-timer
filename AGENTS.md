@@ -26,6 +26,10 @@
   幂等创建，`predist` / `predist:menu` 会在构建前自动确认存在）。
 - **不要删除或更换该证书，也不要从打包配置里移除 identity**：一旦签名身份变化或回到未签名状态，
   每次覆盖安装后 macOS 会把 App 当成"变了的应用"，系统会静默丢弃其通知（症状：通知和测试通知按钮都无反应）。
+- **公开发布与本地打包相互独立**：`builder-release.json` / `builder-menu-release.json` 面向 GitHub Releases
+  公开分发，用 ad-hoc 签名（`identity: "-"`，勿改成 `null`——null 会完全跳过签名，arm64 产物无法运行；
+  也勿填本地自签证书名——用户机器不信任它）。发布用 `npm run release`（需先 `gh auth login`），产物自动
+  挂到 GitHub 草稿 Release，由用户审阅后手动发布。本地 `dist` / `dist:menu` 流程与上述自签证书约定不变。
 - 通知投递结果记录在各 App userData 的 `notif-debug.log`（封顶 200 行）；排查通知问题先看这个文件
   （`native shown` = 原生横幅已确认弹出；`native show event unconfirmed` = 确认事件未触发，横幅可能已弹出）。
   通知**只走原生通道**，不要加 osascript 之类脚本兜底：macOS 上 Electron 的 `show` 确认事件偶发丢失，

@@ -14,7 +14,10 @@
     "predist:menu": "bash scripts/make-signing-cert.sh",
     "dist": "electron-builder --mac --arm64",
     "dist:menu": "electron-builder --mac --arm64 --config builder-menu.json",
-    "dist:all": "npm run dist && npm run dist:menu"
+    "dist:all": "npm run dist && npm run dist:menu",
+    "release:desktop": "GH_TOKEN=$(gh auth token) electron-builder --mac --config builder-release.json --publish always",
+    "release:menu": "GH_TOKEN=$(gh auth token) electron-builder --mac --config builder-menu-release.json --publish always",
+    "release": "npm run release:desktop && npm run release:menu"
   },
   "devDependencies": {
     "electron": "^44.0.0",

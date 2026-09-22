@@ -4,6 +4,27 @@
 
 界面模板与业务模块按职责分层：主页、每日总结和时间块编辑分别保留独立 HTML，渲染层共享日期/状态/作息/统计模型；Electron 主进程也拆为启动、共享状态和职责协调模块。既可以作为独立 App 运行（推荐），也可以直接用浏览器打开。
 
+## 下载与安装
+
+从 [GitHub Releases](https://github.com/bgzb/study-timer/releases) 下载最新版 DMG（免费、无需注册）：
+
+- `study-timer-x.x.x-arm64.dmg` — **桌面端**
+- `study-timer-menu-x.x.x-arm64.dmg` — **菜单栏端**（推荐常驻，负责全部提醒）
+
+两个 App 可只装一个，也可都装（数据自动同步，见下节）。系统要求：**macOS 13+ · Apple Silicon**（Intel 版有需求会补）。
+
+安装：打开 DMG，把 App 拖进「应用程序」。
+
+### 首次打开被拦截？（正常现象）
+
+应用未做公证（免费分发，未购买 Apple 开发者账号），首次打开 macOS 会提示「无法验证开发者」或「已损坏」：
+
+1. 双击 App 触发一次拦截提示（已点过可跳过）
+2. 打开 **系统设置 → 隐私与安全性**，拉到最底部，点「**仍要打开**」
+3. 或用命令移除隔离属性：`xattr -cr /Applications/study-timer.app`（菜单栏端换成 `study-timer-menu.app`）
+
+> 更新到新版本后如果通知失效，同样源于签名变化：去 **系统设置 → 通知** 重新允许一次即可。
+
 ## 安装版 App（推荐）
 
 已打包为**两个独立的 App**（数据自动同步，可单独启动/退出，互不影响）：
@@ -23,6 +44,14 @@ npm run dist:all     # 产出 dist/mac-arm64/study-timer.app + dist/menu/mac-arm
 ```
 
 修改任何代码后重新打包即可更新 App。开发调试：`npm start` 跑桌面端，`npm run start:menu` 跑菜单栏端。
+
+### 发布新版本（GitHub Releases）
+
+```bash
+npm run release   # 需先 gh auth login；产出两个 DMG 并挂到 GitHub 草稿 Release
+```
+
+发布配置在 `builder-release.json` / `builder-menu-release.json`（ad-hoc 签名，`identity: "-"`），与本地打包配置相互独立。流程：递增 `package.json` 的 `version` → 提交推送 → `npm run release` → 到 GitHub 审阅草稿 Release 后手动发布。补 Intel（x64）版本：两份发布配置的 `mac.target` 里 `arch` 数组加 `"x64"` 即可。
 
 ## 浏览器版（备选）
 

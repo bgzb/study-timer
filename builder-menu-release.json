@@ -1,0 +1,39 @@
+{
+  "appId": "com.yongzhao.study-timer.menu",
+  "productName": "study-timer-menu",
+  "directories": {
+    "output": "dist/release"
+  },
+  "files": [
+    "index.html",
+    "day.html",
+    "summary.html",
+    "main.js",
+    "preload.js",
+    "assets/**/*",
+    "src/**/*"
+  ],
+  "extraMetadata": {
+    "name": "study-timer-menu"
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "bgzb",
+    "repo": "study-timer"
+  },
+  "mac": {
+    "category": "public.app-category.productivity",
+    "icon": "assets/icon.png",
+    "identity": "-",
+    "hardenedRuntime": false,
+    "extendInfo": {
+      "LSUIElement": true
+    },
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["arm64"]
+      }
+    ]
+  }
+}
