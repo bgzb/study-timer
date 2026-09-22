@@ -16,6 +16,7 @@
   "extraMetadata": {
     "name": "study-timer-menu"
   },
+  "electronLanguages": ["zh_CN", "zh_TW", "en"],
   "mac": {
     "category": "public.app-category.productivity",
     "icon": "assets/icon.png",

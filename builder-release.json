@@ -18,6 +18,8 @@
     "owner": "bgzb",
     "repo": "study-timer"
   },
+  "electronLanguages": ["zh_CN", "zh_TW", "en"],
+  "compression": "maximum",
   "mac": {
     "category": "public.app-category.productivity",
     "icon": "assets/icon.png",

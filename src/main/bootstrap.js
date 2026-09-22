@@ -151,6 +151,23 @@ const BAR_HEIGHT = 620;
 // 侧边工具抽屉展开时各窗口记住的"收起态宽度"，用于恢复与托盘居中
 const drawerSavedWidth = { win: null, barWin: null };
 
+// 面板隐藏闲置后销毁，回收常驻的渲染器进程（约 40MB）；再次点击托盘走既有重建路径
+const BAR_IDLE_DESTROY_MS = 10 * 60 * 1000;
+let barEvictTimer = null;
+function scheduleBarEviction() {
+  if (barEvictTimer) clearTimeout(barEvictTimer);
+  barEvictTimer = setTimeout(() => {
+    barEvictTimer = null;
+    if (barWin && !barWin.isDestroyed() && !barWin.isVisible() && Date.now() - lastBarHideAt >= BAR_IDLE_DESTROY_MS) {
+      drawerSavedWidth.barWin = null; // 窗口重建时抽屉必然收起，不残留展开宽度
+      barWin.destroy();
+    }
+  }, BAR_IDLE_DESTROY_MS);
+}
+function cancelBarEviction() {
+  if (barEvictTimer) { clearTimeout(barEvictTimer); barEvictTimer = null; }
+}
+
 function createBarWindow() {
   barWin = new BrowserWindow({
     width: BAR_WIDTH,
@@ -164,7 +181,7 @@ function createBarWindow() {
     roundedCorners: true,
     webPreferences: {
       preload: path.join(projectRoot, 'preload.js'),
-      backgroundThrottling: false,
+      // 隐藏时段接受 1s 级定时器节流省 CPU；状态同步走主进程 IPC 广播不受影响
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -181,6 +198,7 @@ function createBarWindow() {
       if (barWin && !barWin.isDestroyed() && !barWin.isFocused() && barWin.isVisible()) {
         lastBarHideAt = Date.now();
         barWin.hide();
+        scheduleBarEviction();
       }
     }, 60);
   });
@@ -190,9 +208,10 @@ function createBarWindow() {
       e.preventDefault();
       lastBarHideAt = Date.now();
       barWin.hide();
+      scheduleBarEviction();
     }
   });
-  barWin.on('closed', () => { barWin = null; });
+  barWin.on('closed', () => { barWin = null; cancelBarEviction(); });
 }
 
 // 面板水平方向以托盘图标为中心、垂直方向紧贴菜单栏下沿；
@@ -216,6 +235,7 @@ function toggleBarWindow() {
   // 点面板外触发 blur 刚收起、紧接着的托盘 click 到达：
   // 视为"已经收起"，不重新弹开
   if (Date.now() - lastBarHideAt < 250) return;
+  cancelBarEviction();
   if (!barWin || barWin.isDestroyed()) {
     createBarWindow();
     // 首次创建等页面就绪再显示，避免闪一个空窗口
@@ -495,6 +515,7 @@ ipcMain.on('bar:hide', () => {
   if (barWin && !barWin.isDestroyed()) {
     lastBarHideAt = Date.now();
     barWin.hide();
+    scheduleBarEviction();
   }
 });
 ipcMain.on('bar:resize', (_e, payload) => {
